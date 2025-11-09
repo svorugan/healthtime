@@ -1,0 +1,69 @@
+# Dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+yarn.lock
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Build outputs
+dist/
+build/
+out/
+tmp/
+out-tsc/
+bazel-out/
+
+# Angular
+.angular/
+.angular/cache
+
+# Logs
+*.log
+logs/
+
+# IDE and editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.c9/
+*.launch
+.settings/
+*.sublime-workspace
+.history/
+
+# OS files
+.DS_Store
+Thumbs.db
+*.bak
+
+# Testing
+coverage/
+.nyc_output/
+testem.log
+
+# Temporary files
+*.tmp
+*.temp
+
+# AWS and deployment
+.aws-sam/
+samconfig.toml
+
+# Docker
+*.dockerignore
+
+# Misc
+.cache/
+.parcel-cache/
