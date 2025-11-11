@@ -1,0 +1,56 @@
+name: Deploy to EC2
+
+on:
+  push:
+    branches: [ main, develop ]
+  workflow_dispatch:  # Allows manual trigger from GitHub UI
+
+jobs:
+  deploy:
+    name: Deploy to EC2 Server
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+    
+    - name: Deploy to EC2 via SSH
+      uses: appleboy/ssh-action@master
+      with:
+        host: ${{ secrets.EC2_HOST }}
+        username: ubuntu
+        key: ${{ secrets.EC2_SSH_KEY }}
+        script: |
+          echo "Starting deployment..."
+          
+          # Navigate to project directory
+          cd /home/ubuntu/healthtime
+          
+          # Pull latest changes
+          git pull origin main
+          
+          # Deploy Backend
+          echo "Deploying backend..."
+          cd backend-node
+          npm install --production
+          pm2 restart healthtime-backend || pm2 start src/server.js --name healthtime-backend
+          
+          # Deploy Frontend
+          echo "Deploying frontend..."
+          cd ../frontend-angular
+          npm install
+          npm run build
+          sudo cp -r dist/healthtime-angular/* /var/www/html/
+          
+          # Restart Nginx
+          sudo systemctl restart nginx
+          
+          echo "Deployment completed successfully at $(date)"
+          
+    - name: Deployment Status
+      if: success()
+      run: echo "✅ Deployment successful!"
+      
+    - name: Deployment Failed
+      if: failure()
+      run: echo "❌ Deployment failed. Check logs."

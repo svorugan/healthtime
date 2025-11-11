@@ -4,6 +4,10 @@ export const adminRoutes: Routes = [
   {
     path: '',
     loadComponent: () => import('./admin-dashboard.component').then(m => m.AdminDashboardComponent)
+  },
+  {
+    path: 'api-explorer',
+    loadComponent: () => import('./api-explorer.component').then(m => m.ApiExplorerComponent)
   }
 ];
 

@@ -1,298 +1,314 @@
-# AWS Infrastructure Setup Guide
+# AWS Infrastructure Setup Guide - Simple EC2 Deployment
 
-This guide provides step-by-step instructions for setting up AWS infrastructure for the healthtime platform.
+This guide provides a simplified setup for deploying the healthtime platform on a single EC2 instance.
 
 ## Overview
 
-The healthtime platform uses the following AWS services:
-- **RDS PostgreSQL**: Database
-- **S3**: File storage and static hosting
-- **ECS Fargate**: Container hosting for backend
-- **ECR**: Docker image registry
-- **CloudFront**: CDN for Angular app
-- **Route 53**: DNS management
-- **ACM**: SSL certificates
-- **ALB**: Application Load Balancer
+**Simple Architecture:**
+- **EC2 Instance**: Hosts both Angular frontend and Node.js backend
+- **PostgreSQL**: Either on EC2 or RDS (recommended)
+- **S3** (optional): File storage for uploads
+- **Route 53** (optional): DNS management
 
-## Step 1: RDS PostgreSQL Setup
+**Estimated Cost**: $15-60/month depending on configuration
 
-### Create RDS Instance
+## Step 1: Launch EC2 Instance
 
-1. Navigate to RDS Console → Create Database
-2. Select **PostgreSQL**
-3. Template: **Production** (or Dev/Test for development)
-4. Settings:
-   - DB instance identifier: `healthtime-db`
+1. **Navigate to EC2 Console** → Launch Instance
+2. **Name**: `healthtime-server`
+3. **AMI**: Ubuntu Server 22.04 LTS (Free tier eligible)
+4. **Instance type**: 
+   - `t2.micro` (free tier, 1GB RAM) - for testing
+   - `t3.small` (2GB RAM) - recommended for production (~$15/month)
+   - `t3.medium` (4GB RAM) - for higher traffic (~$30/month)
+5. **Key pair**: Create new or use existing (save the .pem file securely)
+6. **Network settings**:
+   - Allow SSH (port 22) from your IP
+   - Allow HTTP (port 80) from anywhere (0.0.0.0/0)
+   - Allow HTTPS (port 443) from anywhere (0.0.0.0/0)
+   - Allow custom TCP (port 8000) from anywhere (for backend API)
+7. **Storage**: 20-30 GB (adjust based on needs)
+8. **Launch instance**
+
+## Step 2: Connect to EC2 Instance
+
+### Windows (using PowerShell):
+```powershell
+ssh -i "path\to\your-key.pem" ubuntu@your-ec2-public-ip
+```
+
+### Initial Setup on EC2:
+```bash
+# Update system
+sudo apt update && sudo apt upgrade -y
+
+# Install Node.js 18
+curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+sudo apt install -y nodejs
+
+# Install Nginx (web server)
+sudo apt install -y nginx
+
+# Install PM2 (process manager for Node.js)
+sudo npm install -g pm2
+
+# Install Git
+sudo apt install -y git
+```
+
+## Step 3: Database Setup
+
+### Option A: PostgreSQL on EC2 (Simpler)
+
+```bash
+# Install PostgreSQL
+sudo apt install -y postgresql postgresql-contrib
+
+# Start PostgreSQL
+sudo systemctl start postgresql
+sudo systemctl enable postgresql
+
+# Create database and user
+sudo -u postgres psql
+```
+
+In PostgreSQL prompt:
+```sql
+CREATE DATABASE healthtime;
+CREATE USER healthtime_admin WITH PASSWORD 'your_secure_password';
+GRANT ALL PRIVILEGES ON DATABASE healthtime TO healthtime_admin;
+\q
+```
+
+**Connection string**: `postgresql://healthtime_admin:your_secure_password@localhost:5432/healthtime`
+
+### Option B: RDS PostgreSQL (Recommended for Production)
+
+1. **Navigate to RDS Console** → Create Database
+2. **Engine**: PostgreSQL
+3. **Template**: Free tier (or Dev/Test)
+4. **Settings**:
+   - DB identifier: `healthtime-db`
    - Master username: `healthtime_admin`
    - Master password: (generate strong password)
-5. Instance configuration:
-   - DB instance class: `db.t3.medium` (or `db.t3.small` for dev)
-   - Storage: 100 GB, General Purpose SSD
-6. Connectivity:
-   - VPC: Default or create new
-   - Subnet group: Default
-   - Public access: **No** (for security)
-   - VPC security group: Create new or use existing
-7. Database authentication: **Password authentication**
-8. Additional configuration:
-   - Initial database name: `healthtime`
-   - Backup retention: 7 days
-   - Enable encryption: **Yes**
-   - Enable automated backups: **Yes**
+5. **Instance**: `db.t3.micro` or `db.t4g.micro` (~$15-20/month)
+6. **Storage**: 20 GB General Purpose SSD
+7. **Connectivity**:
+   - Public access: **Yes** (or configure VPC peering)
+   - Security group: Allow PostgreSQL (5432) from EC2 security group
+8. **Create database**
 
-### Security Group Configuration
+**Connection string**: `postgresql://healthtime_admin:password@healthtime-db.xxxxx.region.rds.amazonaws.com:5432/healthtime`
 
-1. Create security group: `healthtime-db-sg`
-2. Inbound rules:
-   - Type: PostgreSQL
-   - Port: 5432
-   - Source: ECS security group (to be created)
+## Step 4: Deploy Backend on EC2
 
-### Connection String Format
+```bash
+# Clone your repository
+cd /home/ubuntu
+git clone https://github.com/your-username/healthtime.git
+cd healthtime/backend-node
 
-```
-postgresql://username:password@healthtime-db.xxxxx.us-east-1.rds.amazonaws.com:5432/healthtime
+# Install dependencies
+npm install
+
+# Create .env file
+nano .env
 ```
 
-## Step 2: S3 Buckets Setup
+Add to `.env`:
+```env
+NODE_ENV=production
+PORT=8000
+DATABASE_URL=postgresql://healthtime_admin:password@localhost:5432/healthtime
+JWT_SECRET=your-super-secret-jwt-key-change-this
+AWS_REGION=us-east-1
+S3_BUCKET_NAME=healthtime-uploads
+CORS_ORIGINS=http://your-ec2-ip,https://your-domain.com
+```
 
-### File Uploads Bucket
+```bash
+# Run database migrations
+# (Add your migration command here)
 
-1. Create bucket: `healthtime-uploads`
-2. Region: `us-east-1` (or your preferred region)
-3. Block Public Access: **Keep enabled** (private bucket)
-4. Versioning: **Enable** (optional)
-5. Encryption: **Enable** (SSE-S3 or SSE-KMS)
-6. Lifecycle rules: Configure to move old files to Glacier after 90 days
+# Start backend with PM2
+pm2 start src/server.js --name healthtime-backend
+pm2 save
+pm2 startup
+```
 
-### Angular App Bucket
+## Step 5: Deploy Frontend on EC2
 
-1. Create bucket: `healthtime-angular-app`
-2. Region: `us-east-1`
-3. Block Public Access: **Disable** (for static website hosting)
-4. Enable static website hosting:
-   - Index document: `index.html`
-   - Error document: `index.html` (for Angular routing)
-5. Bucket policy (for CloudFront):
-   ```json
-   {
-     "Version": "2012-10-17",
-     "Statement": [
-       {
-         "Sid": "AllowCloudFrontServicePrincipal",
-         "Effect": "Allow",
-         "Principal": {
-           "Service": "cloudfront.amazonaws.com"
-         },
-         "Action": "s3:GetObject",
-         "Resource": "arn:aws:s3:::healthtime-angular-app/*",
-         "Condition": {
-           "StringEquals": {
-             "AWS:SourceArn": "arn:aws:cloudfront::ACCOUNT_ID:distribution/DISTRIBUTION_ID"
-           }
-         }
-       }
-     ]
-   }
+```bash
+# Navigate to frontend
+cd /home/ubuntu/healthtime/frontend-angular
+
+# Install dependencies
+npm install
+
+# Build for production
+npm run build
+
+# Copy build files to Nginx
+sudo cp -r dist/healthtime-angular/* /var/www/html/
+
+# Configure Nginx
+sudo nano /etc/nginx/sites-available/default
+```
+
+Nginx configuration:
+```nginx
+server {
+    listen 80 default_server;
+    listen [::]:80 default_server;
+    
+    root /var/www/html;
+    index index.html;
+    
+    server_name _;
+    
+    # Frontend - Angular app
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+    
+    # Backend API proxy
+    location /api {
+        proxy_pass http://localhost:8000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+    }
+}
+```
+
+```bash
+# Test and restart Nginx
+sudo nginx -t
+sudo systemctl restart nginx
+```
+
+## Step 6: S3 Setup (Optional - for file uploads)
+
+1. **Create S3 bucket**: `healthtime-uploads`
+2. **Region**: Same as EC2
+3. **Block Public Access**: Keep enabled (private)
+4. **Create IAM user** for S3 access:
+   - Navigate to IAM → Users → Create user
+   - User name: `healthtime-s3-user`
+   - Attach policy: `AmazonS3FullAccess` (or create custom policy)
+   - Create access key → Save credentials
+5. **Add to backend .env**:
+   ```env
+   AWS_ACCESS_KEY_ID=your-access-key
+   AWS_SECRET_ACCESS_KEY=your-secret-key
    ```
 
-## Step 3: ECR Repository
+## Step 7: SSL Certificate (Optional but Recommended)
 
-1. Navigate to ECR Console → Create repository
-2. Repository name: `healthtime-backend`
-3. Tag immutability: **Enable** (recommended)
-4. Scan on push: **Enable** (for security scanning)
-5. Note the repository URI: `ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/healthtime-backend`
+### Using Let's Encrypt (Free):
 
-## Step 4: ECS Fargate Setup
+```bash
+# Install Certbot
+sudo apt install -y certbot python3-certbot-nginx
 
-### Create Cluster
+# Get certificate (replace with your domain)
+sudo certbot --nginx -d your-domain.com -d www.your-domain.com
 
-1. Navigate to ECS Console → Clusters → Create Cluster
-2. Cluster name: `healthtime-cluster`
-3. Infrastructure: **AWS Fargate** (serverless)
+# Auto-renewal is set up automatically
+```
 
-### Create Task Definition
+## Step 8: Domain Setup (Optional)
 
-1. Navigate to Task Definitions → Create new
-2. Task definition family: `healthtime-backend`
-3. Launch type: **Fargate**
-4. Task size:
-   - CPU: 0.5 vCPU (256)
-   - Memory: 1 GB (1024)
-5. Container definition:
-   - Container name: `healthtime-backend`
-   - Image: `ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/healthtime-backend:latest`
-   - Port mappings: 8000
-   - Environment variables: (add from Secrets Manager or directly)
-     - `NODE_ENV=production`
-     - `PORT=8000`
-     - `DATABASE_URL=...`
-     - `JWT_SECRET=...`
-     - `AWS_ACCESS_KEY_ID=...`
-     - `AWS_SECRET_ACCESS_KEY=...`
-     - `AWS_REGION=us-east-1`
-     - `S3_BUCKET_NAME=healthtime-uploads`
-     - `CORS_ORIGINS=https://your-domain.com`
+If you have a domain:
 
-### Create Application Load Balancer
+1. **Point domain to EC2**:
+   - Get your EC2 public IP from AWS Console
+   - In your domain registrar, create an A record pointing to EC2 IP
+   - Example: `your-domain.com` → `54.123.45.67`
 
-1. Navigate to EC2 → Load Balancers → Create Load Balancer
-2. Type: **Application Load Balancer**
-3. Name: `healthtime-alb`
-4. Scheme: **Internet-facing**
-5. IP address type: **IPv4**
-6. Listeners: HTTP (80) and HTTPS (443)
-7. Availability Zones: Select at least 2
-8. Security group: Create new `healthtime-alb-sg`
-   - Allow HTTP (80) from 0.0.0.0/0
-   - Allow HTTPS (443) from 0.0.0.0/0
-9. Target group:
-   - Name: `healthtime-backend-tg`
-   - Target type: **IP**
-   - Protocol: **HTTP**
-   - Port: 8000
-   - Health check path: `/api`
-
-### Create ECS Service
-
-1. Navigate to ECS Cluster → Services → Create
-2. Launch type: **Fargate**
-3. Task definition: `healthtime-backend`
-4. Service name: `healthtime-backend-service`
-5. Number of tasks: 2 (for high availability)
-6. Networking:
-   - VPC: Same as RDS
-   - Subnets: Select at least 2 public subnets
-   - Security group: Create `healthtime-ecs-sg`
-     - Allow inbound from ALB security group on port 8000
-   - Auto-assign public IP: **Enable**
-7. Load balancing:
-   - Load balancer type: **Application Load Balancer**
-   - Load balancer: `healthtime-alb`
-   - Target group: `healthtime-backend-tg`
-   - Container to load balance: `healthtime-backend:8000`
-
-## Step 5: CloudFront Distribution
-
-1. Navigate to CloudFront → Create Distribution
-2. Origin:
-   - Origin domain: S3 bucket `healthtime-angular-app`
-   - Origin access: **Origin access control**
-   - Create OAC and attach to bucket policy
-3. Default cache behavior:
-   - Viewer protocol policy: **Redirect HTTP to HTTPS**
-   - Allowed HTTP methods: GET, HEAD, OPTIONS
-   - Cache policy: **CachingOptimized**
-4. Settings:
-   - Price class: **Use all edge locations**
-   - Alternate domain names: `your-domain.com`, `www.your-domain.com`
-   - SSL certificate: Request from ACM (see Step 6)
-   - Default root object: `index.html`
-   - Custom error responses:
-     - 403 → 200 → `/index.html`
-     - 404 → 200 → `/index.html`
-
-## Step 6: SSL Certificate (ACM)
-
-1. Navigate to ACM → Request certificate
-2. Domain names:
-   - `your-domain.com`
-   - `*.your-domain.com` (wildcard)
-   - `api.your-domain.com`
-3. Validation method: **DNS validation**
-4. Add DNS records to Route 53 (or your DNS provider)
-5. Wait for validation (usually 5-10 minutes)
-
-## Step 7: Route 53 DNS
-
-1. Navigate to Route 53 → Hosted zones
-2. Create hosted zone for your domain
-3. Create records:
-   - **A record** (Alias):
-     - Name: (blank for root) or `www`
-     - Alias: **Yes**
-     - Alias target: CloudFront distribution
-   - **A record** (Alias):
-     - Name: `api`
-     - Alias: **Yes**
-     - Alias target: ALB
-
-## Step 8: Security Groups Summary
-
-### Database Security Group (`healthtime-db-sg`)
-- Inbound: PostgreSQL (5432) from `healthtime-ecs-sg`
-
-### ECS Security Group (`healthtime-ecs-sg`)
-- Inbound: HTTP (8000) from `healthtime-alb-sg`
-- Outbound: All traffic
-
-### ALB Security Group (`healthtime-alb-sg`)
-- Inbound: HTTP (80) and HTTPS (443) from 0.0.0.0/0
-- Outbound: All traffic
-
-## Step 9: IAM Roles and Policies
-
-### ECS Task Execution Role
-
-1. Create IAM role: `ecsTaskExecutionRole`
-2. Attach policies:
-   - `AmazonECSTaskExecutionRolePolicy`
-   - Custom policy for Secrets Manager (if using)
-
-### ECS Task Role
-
-1. Create IAM role: `ecsTaskRole`
-2. Attach policies:
-   - S3 access policy for uploads bucket
-   - CloudWatch Logs policy
-
-## Step 10: CloudWatch Logs
-
-1. Create log group: `/ecs/healthtime-backend`
-2. Retention: 30 days (or as needed)
-3. ECS task definition will automatically send logs here
+2. **Or use Route 53**:
+   - Create hosted zone for your domain
+   - Create A record pointing to EC2 public IP
+   - Update nameservers at your domain registrar
 
 ## Verification Checklist
 
-- [ ] RDS instance is running and accessible
-- [ ] S3 buckets are created with correct permissions
-- [ ] ECR repository exists
-- [ ] ECS cluster is created
-- [ ] Task definition is created
-- [ ] ALB is created and healthy
-- [ ] ECS service is running with tasks
-- [ ] CloudFront distribution is deployed
-- [ ] SSL certificates are validated
-- [ ] DNS records are configured
-- [ ] Security groups are properly configured
-- [ ] IAM roles have correct permissions
+- [ ] EC2 instance is running
+- [ ] PostgreSQL is installed and database created
+- [ ] Backend is running on port 8000 (check with `pm2 status`)
+- [ ] Frontend is built and deployed to Nginx
+- [ ] Nginx is serving the Angular app on port 80
+- [ ] API endpoints are accessible at `http://your-ec2-ip/api`
+- [ ] Frontend loads at `http://your-ec2-ip`
 
-## Next Steps
+## Testing
 
-1. Configure GitHub Secrets (see DEPLOYMENT.md)
-2. Run database migrations
-3. Deploy backend via GitHub Actions
-4. Deploy frontend via GitHub Actions
-5. Test all endpoints
-6. Monitor CloudWatch logs
+```bash
+# Test backend
+curl http://your-ec2-ip:8000/api
+
+# Test frontend
+curl http://your-ec2-ip
+
+# Check PM2 logs
+pm2 logs healthtime-backend
+
+# Check Nginx logs
+sudo tail -f /var/log/nginx/error.log
+```
+
+## Maintenance Commands
+
+```bash
+# Update code
+cd /home/ubuntu/healthtime
+git pull
+
+# Restart backend
+cd backend-node
+npm install
+pm2 restart healthtime-backend
+
+# Rebuild frontend
+cd ../frontend-angular
+npm install
+npm run build
+sudo cp -r dist/healthtime-angular/* /var/www/html/
+
+# View logs
+pm2 logs
+sudo tail -f /var/log/nginx/access.log
+```
 
 ## Cost Estimation (Monthly)
 
-- RDS (db.t3.medium): ~$50-100
-- ECS Fargate (2 tasks): ~$30-60
-- ALB: ~$20-30
-- S3 Storage: ~$5-10
-- CloudFront: ~$5-20
-- Route 53: ~$1
-- Data Transfer: Variable
+**Minimal Setup (PostgreSQL on EC2):**
+- EC2 t3.small: ~$15
+- Storage (30GB): ~$3
+- Data transfer: ~$1-5
+- **Total**: ~$20-25/month
 
-**Total**: ~$110-240/month (varies by usage)
+**Recommended Setup (with RDS):**
+- EC2 t3.small: ~$15
+- RDS db.t3.micro: ~$15-20
+- S3 storage: ~$1-5
+- Data transfer: ~$1-5
+- **Total**: ~$35-50/month
+
+## Scaling Later
+
+When you need to scale:
+- Add Application Load Balancer
+- Use Auto Scaling Groups
+- Move to ECS/Fargate for containers
+- Add CloudFront CDN
+- Implement Redis for caching
 
 ## Support
 
-For AWS-specific issues, refer to:
-- AWS Documentation
-- AWS Support (if you have a support plan)
-- AWS Forums
+- AWS Free Tier: First 12 months get free t2.micro instance
+- AWS Documentation: https://docs.aws.amazon.com
+- Ubuntu Server Guide: https://ubuntu.com/server/docs
 

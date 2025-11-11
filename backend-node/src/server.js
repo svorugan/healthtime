@@ -17,6 +17,7 @@ const hospitalRoutes = require('./routes/hospitals');
 const bookingRoutes = require('./routes/bookings');
 const notificationRoutes = require('./routes/notifications');
 const uploadRoutes = require('./routes/uploads');
+const apiDocsRoutes = require('./routes/api-docs');
 
 const app = express();
 const PORT = process.env.PORT || 8000;
@@ -26,6 +27,9 @@ app.use(helmet());
 app.use(morgan('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Serve static files from public directory
+app.use(express.static('public'));
 
 // CORS configuration
 const corsOptions = {
@@ -56,6 +60,7 @@ app.use('/api/hospitals', hospitalRoutes);
 app.use('/api/bookings', bookingRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/upload', uploadRoutes);
+app.use('/api/docs', apiDocsRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

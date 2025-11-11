@@ -15,6 +15,9 @@ import AdminBookingForm from './components/AdminBookingForm';
 import DoctorProfileModal from './components/DoctorProfileModal';
 import PatientProfileModal from './components/PatientProfileModal';
 
+// Import pages
+import ApiExplorer from './pages/ApiExplorer';
+
 // Enhanced Patient Wrapper Component
 const EnhancedPatientWrapper = () => {
   const navigate = useNavigate();
@@ -1237,6 +1240,12 @@ const AdminDashboard = () => {
             <Button onClick={() => navigate('/admin/patient/new')} className="bg-green-600 hover:bg-green-700">
               + Add Patient
             </Button> */}
+            <Button 
+              onClick={() => navigate('/admin/api-explorer')}
+              className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-semibold shadow-lg"
+            >
+              🔌 API Explorer
+            </Button>
             <Button onClick={() => navigate('/admin/booking/new')} className="bg-indigo-600 hover:bg-indigo-700">
               + Add Booking
             </Button>
@@ -6333,6 +6342,7 @@ function App() {
             <Route path="/admin/hospital/:id/edit" element={<ProtectedRoute role="admin"><HospitalRegistration /></ProtectedRoute>} />
             <Route path="/admin/implant/new" element={<ProtectedRoute role="admin"><ImplantRegistration /></ProtectedRoute>} />
             <Route path="/admin/implant/:id/edit" element={<ProtectedRoute role="admin"><ImplantRegistration /></ProtectedRoute>} />
+            <Route path="/admin/api-explorer" element={<ProtectedRoute role="admin"><ApiExplorer /></ProtectedRoute>} />
             
             {/* Doctor Routes */}
             <Route path="/doctor" element={<ProtectedRoute role="doctor"><DoctorDashboard /></ProtectedRoute>} />
