@@ -1,9 +1,11 @@
 const express = require('express');
 const router = express.Router();
 const multer = require('multer');
-const { Op } = require('sequelize');
-const { Patient, PatientMedicalHistory, PatientVitalSigns, Booking, Surgery, Doctor, Hospital } = require('../models');
+const { Op, Transaction } = require('sequelize');
+const { sequelize } = require('../config/database');
+const { User, Patient, PatientMedicalHistory, PatientVitalSigns, Booking, Surgery, Doctor, Hospital } = require('../models');
 const { calculatePatientProfileCompleteness, calculateAge, calculateBMI } = require('../utils/helpers');
+const { hashPassword } = require('../utils/auth');
 const { authenticate } = require('../middleware/authenticate');
 const { authorize, authorizeOwner } = require('../middleware/authorize');
 
@@ -24,15 +26,58 @@ const upload = multer({
 
 // Create Patient (Basic)
 router.post('/', async (req, res) => {
-  const patientData = req.body;
+  const { email, password, ...patientData } = req.body;
+
+  // Validate required fields
+  if (!email || !password) {
+    return res.status(400).json({ detail: 'Email and password are required' });
+  }
+
+  // Validate required patient fields for basic endpoint
+  const requiredFields = ['full_name', 'phone', 'date_of_birth', 'age', 'gender', 'current_address', 
+                          'emergency_contact_name', 'emergency_contact_phone', 'insurance_provider', 'insurance_number'];
+  const missingFields = requiredFields.filter(field => !patientData[field]);
+  if (missingFields.length > 0) {
+    return res.status(400).json({ detail: `Missing required fields: ${missingFields.join(', ')}` });
+  }
+
+  // Remove email and password from patientData if they somehow got through
+  delete patientData.email;
+  delete patientData.password;
+
+  const transaction = await sequelize.transaction();
 
   try {
-    const patient = await Patient.create(patientData);
+    // Check if user already exists
+    const existingUser = await User.findByEmail(email);
+    if (existingUser) {
+      await transaction.rollback();
+      return res.status(400).json({ detail: 'User with this email already exists' });
+    }
+
+    // Hash password
+    const hashedPassword = await hashPassword(password);
+
+    // Create user first with role 'patient'
+    const user = await User.create({
+      email: email,
+      password: hashedPassword,
+      role: 'patient',
+      is_active: true,
+      email_verified: false
+    }, { transaction });
+
+    // Create patient record with user_id
+    patientData.user_id = user.id;
+    const patient = await Patient.create(patientData, { transaction });
     
+    await transaction.commit();
+
     return res.status(201).json({
       id: patient.id,
+      user_id: user.id,
+      email: user.email,
       full_name: patient.full_name,
-      email: patient.email,
       phone: patient.phone,
       age: patient.age,
       gender: patient.gender,
@@ -45,6 +90,7 @@ router.post('/', async (req, res) => {
       created_at: patient.created_at
     });
   } catch (error) {
+    await transaction.rollback();
     console.error('Patient creation error:', error);
     return res.status(500).json({ detail: 'Patient creation failed: ' + error.message });
   }
@@ -52,11 +98,51 @@ router.post('/', async (req, res) => {
 
 // Create Enhanced Patient
 router.post('/enhanced', async (req, res) => {
-  const patientData = req.body;
+  const { email, password, ...patientData } = req.body;
+
+  // Validate required fields
+  if (!email || !password) {
+    return res.status(400).json({ detail: 'Email and password are required' });
+  }
+
+  // Remove email and password from patientData if they somehow got through
+  delete patientData.email;
+  delete patientData.password;
+
+  const transaction = await sequelize.transaction();
 
   try {
+    // Validate date_of_birth is provided
+    if (!patientData.date_of_birth) {
+      await transaction.rollback();
+      return res.status(400).json({ detail: 'date_of_birth is required for enhanced registration' });
+    }
+
+    // Check if user already exists
+    const existingUser = await User.findByEmail(email);
+    if (existingUser) {
+      await transaction.rollback();
+      return res.status(400).json({ detail: 'User with this email already exists' });
+    }
+
+    // Hash password
+    const hashedPassword = await hashPassword(password);
+
+    // Create user first with role 'patient'
+    const user = await User.create({
+      email: email,
+      password: hashedPassword,
+      role: 'patient',
+      is_active: true,
+      email_verified: false
+    }, { transaction });
+
     // Calculate age from date of birth
     const age = calculateAge(patientData.date_of_birth);
+    if (!age || isNaN(age)) {
+      await transaction.rollback();
+      return res.status(400).json({ detail: 'Invalid date_of_birth format. Please use YYYY-MM-DD' });
+    }
     patientData.age = age;
 
     // Calculate BMI if height and weight provided
@@ -64,7 +150,11 @@ router.post('/enhanced', async (req, res) => {
       patientData.bmi = calculateBMI(patientData.height_cm, patientData.weight_kg);
     }
 
-    const patient = await Patient.create(patientData);
+    // Create patient record with user_id
+    patientData.user_id = user.id;
+    const patient = await Patient.create(patientData, { transaction });
+
+    await transaction.commit();
 
     // Calculate profile completeness (for response only, not stored in DB)
     const completeness = calculatePatientProfileCompleteness(patient);
@@ -72,10 +162,13 @@ router.post('/enhanced', async (req, res) => {
     return res.status(201).json({
       message: 'Enhanced patient registration successful',
       patient_id: patient.id,
+      user_id: user.id,
+      email: user.email,
       profile_completeness: completeness,
       next_steps: ['Upload insurance documents', 'Schedule consultation']
     });
   } catch (error) {
+    await transaction.rollback();
     console.error('Enhanced patient creation error:', error);
     return res.status(500).json({ detail: 'Registration failed: ' + error.message });
   }

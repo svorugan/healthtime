@@ -1066,6 +1066,237 @@ const DoctorRegistration = () => {
   );
 };
 
+// Admin Layout Wrapper Component
+const AdminLayout = ({ children, title, subtitle }) => {
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const { logout } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // Close user menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (userMenuOpen && !event.target.closest('.user-menu-container')) {
+        setUserMenuOpen(false);
+      }
+    };
+    
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [userMenuOpen]);
+
+  const navItems = [
+    { id: 'doctors', label: 'Doctors', icon: '👨‍⚕️', path: '/admin' },
+    { id: 'hospitals', label: 'Hospitals', icon: '🏥', path: '/admin' },
+    { id: 'implants', label: 'Implants', icon: '🦴', path: '/admin' },
+    { id: 'patients', label: 'Patients', icon: '👥', path: '/admin' },
+    { id: 'bookings', label: 'Bookings', icon: '📅', path: '/admin' }
+  ];
+
+  return (
+    <div className="flex h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 overflow-hidden">
+      {/* Left Sidebar */}
+      <aside className={`bg-white shadow-2xl transition-all duration-300 flex flex-col ${
+        sidebarCollapsed ? 'w-20' : 'w-72'
+      }`}>
+        {/* Logo & Toggle */}
+        <div className="p-6 border-b border-gray-200 flex items-center justify-between">
+          {!sidebarCollapsed && (
+            <div>
+              <h1 className="text-2xl font-bold bg-gradient-to-r from-teal-600 to-blue-600 bg-clip-text text-transparent">
+                🏥 healthtime
+              </h1>
+              <p className="text-xs text-gray-500 mt-1">Admin Dashboard</p>
+            </div>
+          )}
+          <button
+            onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+            className="p-2 rounded-lg hover:bg-gray-100 transition-colors ml-auto"
+          >
+            <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              {sidebarCollapsed ? (
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M5 5l7 7-7 7" />
+              ) : (
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+              )}
+            </svg>
+          </button>
+        </div>
+
+        {/* Navigation Items */}
+        <nav className="flex-1 overflow-y-auto py-4">
+          {navItems.map((item) => (
+            <button
+              key={item.id}
+              onClick={() => navigate(item.path)}
+              className={`w-full flex items-center px-6 py-4 transition-all group ${
+                location.pathname === item.path
+                  ? 'bg-gradient-to-r from-teal-500 to-blue-500 text-white shadow-lg'
+                  : 'text-gray-700 hover:bg-gray-100'
+              }`}
+            >
+              <span className="text-2xl">{item.icon}</span>
+              {!sidebarCollapsed && (
+                <span className="ml-4 font-medium flex-1 text-left">{item.label}</span>
+              )}
+            </button>
+          ))}
+        </nav>
+
+        {/* Quick Actions */}
+        <div className="border-t border-gray-200 p-4 space-y-2">
+          {!sidebarCollapsed ? (
+            <>
+              <button
+                onClick={() => navigate('/admin/booking/new')}
+                className="w-full flex items-center px-4 py-3 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition-all"
+              >
+                <span className="text-xl">📅</span>
+                <span className="ml-3 font-medium">Add Booking</span>
+              </button>
+              <button
+                onClick={() => navigate('/admin/hospital/new')}
+                className="w-full flex items-center px-4 py-3 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-all"
+              >
+                <span className="text-xl">🏥</span>
+                <span className="ml-3 font-medium">Add Hospital</span>
+              </button>
+              <button
+                onClick={() => navigate('/admin/implant/new')}
+                className="w-full flex items-center px-4 py-3 rounded-lg bg-purple-600 text-white hover:bg-purple-700 transition-all"
+              >
+                <span className="text-xl">🦴</span>
+                <span className="ml-3 font-medium">Add Implant</span>
+              </button>
+              
+              {/* Separator */}
+              <div className="border-t border-gray-300 my-3"></div>
+              
+              <button
+                onClick={() => navigate('/admin/api-explorer')}
+                className="w-full flex items-center px-4 py-3 rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 text-white hover:from-purple-700 hover:to-indigo-700 transition-all shadow-md"
+              >
+                <span className="text-xl">🔌</span>
+                <span className="ml-3 font-medium">API Explorer</span>
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                onClick={() => navigate('/admin/booking/new')}
+                className="w-full flex items-center justify-center px-4 py-3 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition-all"
+                title="Add Booking"
+              >
+                <span className="text-xl">📅</span>
+              </button>
+              <button
+                onClick={() => navigate('/admin/hospital/new')}
+                className="w-full flex items-center justify-center px-4 py-3 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-all"
+                title="Add Hospital"
+              >
+                <span className="text-xl">🏥</span>
+              </button>
+              <button
+                onClick={() => navigate('/admin/implant/new')}
+                className="w-full flex items-center justify-center px-4 py-3 rounded-lg bg-purple-600 text-white hover:bg-purple-700 transition-all"
+                title="Add Implant"
+              >
+                <span className="text-xl">🦴</span>
+              </button>
+              
+              {/* Separator */}
+              <div className="border-t border-gray-300 my-3"></div>
+              
+              <button
+                onClick={() => navigate('/admin/api-explorer')}
+                className="w-full flex items-center justify-center px-4 py-3 rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 text-white hover:from-purple-700 hover:to-indigo-700 transition-all shadow-md"
+                title="API Explorer"
+              >
+                <span className="text-xl">🔌</span>
+              </button>
+            </>
+          )}
+        </div>
+      </aside>
+
+      {/* Main Content Area */}
+      <main className="flex-1 overflow-y-auto">
+        {/* Top Header Bar */}
+        <div className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 shadow-lg px-8 py-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              {location.pathname !== '/admin' && (
+                <button
+                  onClick={() => navigate('/admin')}
+                  className="px-4 py-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-lg text-white font-medium transition-all border border-white/30 hover:border-white/50 flex items-center space-x-2"
+                >
+                  <span>←</span>
+                  <span>Back to Dashboard</span>
+                </button>
+              )}
+              <div>
+                <h2 className="text-3xl font-bold text-white">
+                  {title || 'Admin Dashboard'}
+                </h2>
+                <p className="text-indigo-100 mt-1">{subtitle || 'Manage your platform'}</p>
+              </div>
+            </div>
+            <div className="flex items-center space-x-4">
+              {/* User Menu */}
+              <div className="relative user-menu-container">
+                <button
+                  onClick={() => setUserMenuOpen(!userMenuOpen)}
+                  className="w-12 h-12 rounded-full bg-white/20 hover:bg-white/30 backdrop-blur-sm flex items-center justify-center text-white font-semibold text-lg transition-all border-2 border-white/30 hover:border-white/50"
+                >
+                  👤
+                </button>
+                
+                {/* Dropdown Menu */}
+                {userMenuOpen && (
+                  <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-2xl border border-gray-200 py-2 z-50">
+                    <div className="px-4 py-3 border-b border-gray-200">
+                      <p className="text-sm font-semibold text-gray-800">Admin User</p>
+                      <p className="text-xs text-gray-500 mt-1">admin@healthtime.com</p>
+                    </div>
+                    
+                    <button
+                      onClick={() => {
+                        setUserMenuOpen(false);
+                        toast.info('Settings feature coming soon!');
+                      }}
+                      className="w-full flex items-center px-4 py-3 text-gray-700 hover:bg-gray-100 transition-colors text-left"
+                    >
+                      <span className="text-lg mr-3">⚙️</span>
+                      <span className="font-medium">Settings</span>
+                    </button>
+                    
+                    <button
+                      onClick={() => {
+                        setUserMenuOpen(false);
+                        logout();
+                      }}
+                      className="w-full flex items-center px-4 py-3 text-red-600 hover:bg-red-50 transition-colors text-left"
+                    >
+                      <span className="text-lg mr-3">🚪</span>
+                      <span className="font-medium">Logout</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Content */}
+        <div className="p-8">
+          {children}
+        </div>
+      </main>
+    </div>
+  );
+};
+
 // Enhanced Admin Dashboard with Full Management
 const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState('doctors');
@@ -1081,12 +1312,26 @@ const AdminDashboard = () => {
   const [selectedPatient, setSelectedPatient] = useState(null);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [isPatientModalOpen, setIsPatientModalOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
   const { logout } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
     fetchAllData();
   }, []);
+
+  // Close user menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (userMenuOpen && !event.target.closest('.user-menu-container')) {
+        setUserMenuOpen(false);
+      }
+    };
+    
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [userMenuOpen]);
 
   const fetchAllData = async () => {
     try {
@@ -1222,84 +1467,223 @@ const AdminDashboard = () => {
     );
   });
 
+  const navItems = [
+    { id: 'doctors', label: 'Doctors', icon: '👨‍⚕️', count: doctors.length },
+    { id: 'hospitals', label: 'Hospitals', icon: '🏥', count: hospitals.length },
+    { id: 'implants', label: 'Implants', icon: '🦴', count: implants.length },
+    { id: 'patients', label: 'Patients', icon: '👥', count: patients.length },
+    { id: 'bookings', label: 'Bookings', icon: '📅', count: bookings.length }
+  ];
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-teal-50 via-cyan-50 to-blue-50 p-4">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="flex justify-between items-center mb-8">
-          <div>
-            <h1 className="text-4xl font-bold bg-gradient-to-r from-teal-600 to-blue-600 bg-clip-text text-transparent">
-              🏥 healthtime Admin Dashboard
-            </h1>
-            <p className="text-gray-600 mt-2">Complete platform management system</p>
-          </div>
-          <div className="flex flex-wrap gap-3">
-            {/* <Button onClick={() => navigate('/admin/doctor/new')} className="bg-teal-600 hover:bg-teal-700">
-              + Add Doctor
-            </Button>
-            <Button onClick={() => navigate('/admin/patient/new')} className="bg-green-600 hover:bg-green-700">
-              + Add Patient
-            </Button> */}
-            <Button 
-              onClick={() => navigate('/admin/api-explorer')}
-              className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-semibold shadow-lg"
+    <div className="flex h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 overflow-hidden">
+      {/* Left Sidebar */}
+      <aside className={`bg-white shadow-2xl transition-all duration-300 flex flex-col ${
+        sidebarCollapsed ? 'w-20' : 'w-72'
+      }`}>
+        {/* Logo & Toggle */}
+        <div className="p-6 border-b border-gray-200 flex items-center justify-between">
+          {!sidebarCollapsed && (
+            <div>
+              <h1 className="text-2xl font-bold bg-gradient-to-r from-teal-600 to-blue-600 bg-clip-text text-transparent">
+                🏥 healthtime
+              </h1>
+              <p className="text-xs text-gray-500 mt-1">Admin Dashboard</p>
+            </div>
+          )}
+          <button
+            onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+            className="p-2 rounded-lg hover:bg-gray-100 transition-colors ml-auto"
+          >
+            <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              {sidebarCollapsed ? (
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M5 5l7 7-7 7" />
+              ) : (
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+              )}
+            </svg>
+          </button>
+        </div>
+
+        {/* Navigation Items */}
+        <nav className="flex-1 overflow-y-auto py-4">
+          {navItems.map((item) => (
+            <button
+              key={item.id}
+              onClick={() => setActiveTab(item.id)}
+              className={`w-full flex items-center px-6 py-4 transition-all group ${
+                activeTab === item.id
+                  ? 'bg-gradient-to-r from-teal-500 to-blue-500 text-white shadow-lg'
+                  : 'text-gray-700 hover:bg-gray-100'
+              }`}
             >
-              🔌 API Explorer
-            </Button>
-            <Button onClick={() => navigate('/admin/booking/new')} className="bg-indigo-600 hover:bg-indigo-700">
-              + Add Booking
-            </Button>
-            <Button onClick={() => navigate('/admin/hospital/new')} className="bg-blue-600 hover:bg-blue-700">
-              + Add Hospital
-            </Button>
-            <Button onClick={() => navigate('/admin/implant/new')} className="bg-purple-600 hover:bg-purple-700">
-              + Add Implant
-            </Button>
-            <Button onClick={logout} variant="outline" className="border-red-300 text-red-600 hover:bg-red-50">
-              Logout
-            </Button>
-          </div>
-        </div>
+              <span className="text-2xl">{item.icon}</span>
+              {!sidebarCollapsed && (
+                <>
+                  <span className="ml-4 font-medium flex-1 text-left">{item.label}</span>
+                  {item.count > 0 && (
+                    <span className={`px-2 py-1 text-xs rounded-full ${
+                      activeTab === item.id
+                        ? 'bg-white/20 text-white'
+                        : 'bg-teal-100 text-teal-700'
+                    }`}>
+                      {item.count}
+                    </span>
+                  )}
+                </>
+              )}
+            </button>
+          ))}
+        </nav>
 
-        {/* Navigation Tabs */}
-        <div className="mb-8">
-          <nav className="flex space-x-1 bg-white/60 backdrop-blur-sm rounded-xl p-2">
-            {[
-              { id: 'doctors', label: '👨‍⚕️ Doctors', count: doctors.length },
-              { id: 'hospitals', label: '🏥 Hospitals', count: hospitals.length },
-              { id: 'implants', label: '🦴 Implants', count: implants.length },
-              { id: 'patients', label: '👥 Patients', count: patients.length },
-              { id: 'bookings', label: '📅 Bookings', count: bookings.length }
-            ].map((tab) => (
+        {/* Quick Actions */}
+        <div className="border-t border-gray-200 p-4 space-y-2">
+          {!sidebarCollapsed ? (
+            <>
               <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center px-6 py-3 rounded-lg font-medium transition-all ${
-                  activeTab === tab.id
-                    ? 'bg-teal-500 text-white shadow-lg'
-                    : 'text-gray-600 hover:text-gray-800 hover:bg-white/50'
-                }`}
+                onClick={() => navigate('/admin/booking/new')}
+                className="w-full flex items-center px-4 py-3 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition-all"
               >
-                {tab.label}
-                {tab.count > 0 && (
-                  <span className={`ml-2 px-2 py-1 text-xs rounded-full ${
-                    activeTab === tab.id ? 'bg-white/20' : 'bg-teal-100 text-teal-600'
-                  }`}>
-                    {tab.count}
-                  </span>
-                )}
+                <span className="text-xl">📅</span>
+                <span className="ml-3 font-medium">Add Booking</span>
               </button>
-            ))}
-          </nav>
+              <button
+                onClick={() => navigate('/admin/hospital/new')}
+                className="w-full flex items-center px-4 py-3 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-all"
+              >
+                <span className="text-xl">🏥</span>
+                <span className="ml-3 font-medium">Add Hospital</span>
+              </button>
+              <button
+                onClick={() => navigate('/admin/implant/new')}
+                className="w-full flex items-center px-4 py-3 rounded-lg bg-purple-600 text-white hover:bg-purple-700 transition-all"
+              >
+                <span className="text-xl">🦴</span>
+                <span className="ml-3 font-medium">Add Implant</span>
+              </button>
+              
+              {/* Separator */}
+              <div className="border-t border-gray-300 my-3"></div>
+              
+              <button
+                onClick={() => navigate('/admin/api-explorer')}
+                className="w-full flex items-center px-4 py-3 rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 text-white hover:from-purple-700 hover:to-indigo-700 transition-all shadow-md"
+              >
+                <span className="text-xl">🔌</span>
+                <span className="ml-3 font-medium">API Explorer</span>
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                onClick={() => navigate('/admin/booking/new')}
+                className="w-full flex items-center justify-center px-4 py-3 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition-all"
+                title="Add Booking"
+              >
+                <span className="text-xl">📅</span>
+              </button>
+              <button
+                onClick={() => navigate('/admin/hospital/new')}
+                className="w-full flex items-center justify-center px-4 py-3 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-all"
+                title="Add Hospital"
+              >
+                <span className="text-xl">🏥</span>
+              </button>
+              <button
+                onClick={() => navigate('/admin/implant/new')}
+                className="w-full flex items-center justify-center px-4 py-3 rounded-lg bg-purple-600 text-white hover:bg-purple-700 transition-all"
+                title="Add Implant"
+              >
+                <span className="text-xl">🦴</span>
+              </button>
+              
+              {/* Separator */}
+              <div className="border-t border-gray-300 my-3"></div>
+              
+              <button
+                onClick={() => navigate('/admin/api-explorer')}
+                className="w-full flex items-center justify-center px-4 py-3 rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 text-white hover:from-purple-700 hover:to-indigo-700 transition-all shadow-md"
+                title="API Explorer"
+              >
+                <span className="text-xl">🔌</span>
+              </button>
+            </>
+          )}
+        </div>
+      </aside>
+
+      {/* Main Content Area */}
+      <main className="flex-1 overflow-y-auto">
+        {/* Top Header Bar */}
+        <div className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 shadow-lg px-8 py-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-3xl font-bold text-white">
+                {navItems.find(item => item.id === activeTab)?.icon} {navItems.find(item => item.id === activeTab)?.label}
+              </h2>
+              <p className="text-indigo-100 mt-1">Manage and monitor your {activeTab}</p>
+            </div>
+            <div className="flex items-center space-x-4">
+              <div className="text-right mr-4">
+                <p className="text-sm text-indigo-100">Total {navItems.find(item => item.id === activeTab)?.label}</p>
+                <p className="text-2xl font-bold text-white">{navItems.find(item => item.id === activeTab)?.count}</p>
+              </div>
+              
+              {/* User Menu */}
+              <div className="relative user-menu-container">
+                <button
+                  onClick={() => setUserMenuOpen(!userMenuOpen)}
+                  className="w-12 h-12 rounded-full bg-white/20 hover:bg-white/30 backdrop-blur-sm flex items-center justify-center text-white font-semibold text-lg transition-all border-2 border-white/30 hover:border-white/50"
+                >
+                  👤
+                </button>
+                
+                {/* Dropdown Menu */}
+                {userMenuOpen && (
+                  <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-2xl border border-gray-200 py-2 z-50">
+                    <div className="px-4 py-3 border-b border-gray-200">
+                      <p className="text-sm font-semibold text-gray-800">Admin User</p>
+                      <p className="text-xs text-gray-500 mt-1">admin@healthtime.com</p>
+                    </div>
+                    
+                    <button
+                      onClick={() => {
+                        setUserMenuOpen(false);
+                        // TODO: Implement settings
+                        toast.info('Settings feature coming soon!');
+                      }}
+                      className="w-full flex items-center px-4 py-3 text-gray-700 hover:bg-gray-100 transition-colors text-left"
+                    >
+                      <span className="text-lg mr-3">⚙️</span>
+                      <span className="font-medium">Settings</span>
+                    </button>
+                    
+                    <button
+                      onClick={() => {
+                        setUserMenuOpen(false);
+                        logout();
+                      }}
+                      className="w-full flex items-center px-4 py-3 text-red-600 hover:bg-red-50 transition-colors text-left"
+                    >
+                      <span className="text-lg mr-3">🚪</span>
+                      <span className="font-medium">Logout</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
 
-        {loading ? (
-          <div className="text-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600 mx-auto mb-4"></div>
-            <p className="text-gray-600">Loading admin data...</p>
-          </div>
-        ) : (
-          <div className="space-y-6">
+        {/* Content */}
+        <div className="p-8">
+          {loading ? (
+            <div className="text-center py-12">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600 mx-auto mb-4"></div>
+              <p className="text-gray-600">Loading admin data...</p>
+            </div>
+          ) : (
+            <div className="space-y-6">
             {/* Doctors Management */}
             {activeTab === 'doctors' && (
               <div className="space-y-6">
@@ -1385,6 +1769,9 @@ const AdminDashboard = () => {
                           {filteredDoctors.length} of {doctors.length}
                         </Badge>
                       </CardTitle>
+                      <Button onClick={() => navigate('/admin/doctor/new')} className="bg-teal-600 hover:bg-teal-700">
+                        + Add New Doctor
+                      </Button>
                     </div>
                     <div className="relative">
                       <input
@@ -1794,7 +2181,8 @@ const AdminDashboard = () => {
             )}
           </div>
         )}
-      </div>
+        </div>
+      </main>
 
       {/* Doctor Profile Modal */}
       <DoctorProfileModal
@@ -5188,17 +5576,7 @@ const HospitalRegistration = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-teal-50 via-cyan-50 to-blue-50 p-4">
       <div className="max-w-4xl mx-auto">
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-teal-600 to-blue-600 bg-clip-text text-transparent mb-2">
-            🏥 Register New Hospital
-          </h1>
-          <p className="text-lg text-slate-600">Add a new healthcare facility to the healthtime network</p>
-        </div>
-
         <Card className="shadow-2xl border-0 bg-white/90 backdrop-blur-sm">
-          <CardHeader className="bg-gradient-to-r from-teal-500 to-blue-500 text-white rounded-t-lg">
-            <CardTitle className="text-2xl text-center">Hospital Registration Form</CardTitle>
-          </CardHeader>
           <CardContent className="p-8">
             <form onSubmit={handleSubmit} className="space-y-6">
               
@@ -5527,7 +5905,7 @@ const ImplantRegistration = () => {
       <div className="max-w-4xl mx-auto">
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent mb-2">
-            🦴 Register New Implant
+            Register New Implant
           </h1>
           <p className="text-lg text-slate-600">Add a new medical implant to the healthtime catalog</p>
         </div>
@@ -6335,14 +6713,14 @@ function App() {
             
             {/* Admin Routes */}
             <Route path="/admin" element={<ProtectedRoute role="admin"><AdminDashboard /></ProtectedRoute>} />
-            <Route path="/admin/doctor/new" element={<ProtectedRoute role="admin"><AdminDoctorForm /></ProtectedRoute>} />
-            <Route path="/admin/patient/new" element={<ProtectedRoute role="admin"><AdminPatientForm /></ProtectedRoute>} />
-            <Route path="/admin/booking/new" element={<ProtectedRoute role="admin"><AdminBookingForm /></ProtectedRoute>} />
-            <Route path="/admin/hospital/new" element={<ProtectedRoute role="admin"><HospitalRegistration /></ProtectedRoute>} />
-            <Route path="/admin/hospital/:id/edit" element={<ProtectedRoute role="admin"><HospitalRegistration /></ProtectedRoute>} />
-            <Route path="/admin/implant/new" element={<ProtectedRoute role="admin"><ImplantRegistration /></ProtectedRoute>} />
-            <Route path="/admin/implant/:id/edit" element={<ProtectedRoute role="admin"><ImplantRegistration /></ProtectedRoute>} />
-            <Route path="/admin/api-explorer" element={<ProtectedRoute role="admin"><ApiExplorer /></ProtectedRoute>} />
+            <Route path="/admin/doctor/new" element={<ProtectedRoute role="admin"><AdminLayout title="👨‍⚕️ Add New Doctor" subtitle="Register a new doctor to the platform"><AdminDoctorForm /></AdminLayout></ProtectedRoute>} />
+            <Route path="/admin/patient/new" element={<ProtectedRoute role="admin"><AdminLayout title="👥 Add New Patient" subtitle="Register a new patient to the platform"><AdminPatientForm /></AdminLayout></ProtectedRoute>} />
+            <Route path="/admin/booking/new" element={<ProtectedRoute role="admin"><AdminLayout title="📅 Add New Booking" subtitle="Create a new booking for a patient"><AdminBookingForm /></AdminLayout></ProtectedRoute>} />
+            <Route path="/admin/hospital/new" element={<ProtectedRoute role="admin"><AdminLayout title="🏥 Add New Hospital" subtitle="Register a new hospital to the platform"><HospitalRegistration /></AdminLayout></ProtectedRoute>} />
+            <Route path="/admin/hospital/:id/edit" element={<ProtectedRoute role="admin"><AdminLayout title="🏥 Edit Hospital" subtitle="Update hospital information"><HospitalRegistration /></AdminLayout></ProtectedRoute>} />
+            <Route path="/admin/implant/new" element={<ProtectedRoute role="admin"><AdminLayout title="🦴 Add New Implant" subtitle="Register a new implant to the platform"><ImplantRegistration /></AdminLayout></ProtectedRoute>} />
+            <Route path="/admin/implant/:id/edit" element={<ProtectedRoute role="admin"><AdminLayout title="🦴 Edit Implant" subtitle="Update implant information"><ImplantRegistration /></AdminLayout></ProtectedRoute>} />
+            <Route path="/admin/api-explorer" element={<ProtectedRoute role="admin"><AdminLayout title="🔌 API Explorer" subtitle="Explore and test all backend API endpoints"><ApiExplorer /></AdminLayout></ProtectedRoute>} />
             
             {/* Doctor Routes */}
             <Route path="/doctor" element={<ProtectedRoute role="doctor"><DoctorDashboard /></ProtectedRoute>} />

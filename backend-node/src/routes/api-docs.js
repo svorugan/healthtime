@@ -184,77 +184,205 @@ router.get('/endpoints', authenticate, authorize('admin'), async (req, res) => {
             {
               method: 'POST',
               path: '/patients',
-              description: 'Create a basic patient profile',
-              requiresAuth: false
+              description: 'Create a basic patient profile with user account (email/password required, age must be provided)',
+              requiresAuth: false,
+              body: {
+                email: 'string (required) - User email',
+                password: 'string (required) - User password',
+                full_name: 'string (required)',
+                phone: 'string (required)',
+                date_of_birth: 'date (required)',
+                age: 'integer (required) - Must be provided by client',
+                gender: 'string (required)',
+                current_address: 'text (required)',
+                emergency_contact_name: 'string (required)',
+                emergency_contact_phone: 'string (required)',
+                insurance_provider: 'string (required)',
+                insurance_number: 'string (required)',
+                alternate_phone: 'string (optional)',
+                occupation: 'string (optional)',
+                preferred_language: 'string (optional)',
+                city: 'string (optional)',
+                state: 'string (optional)',
+                pincode: 'string (optional)'
+              },
+              response: {
+                id: 'uuid - Patient ID',
+                user_id: 'uuid - User ID',
+                email: 'string - User email',
+                full_name: 'string',
+                phone: 'string',
+                age: 'integer',
+                gender: 'string',
+                address: 'string',
+                insurance_provider: 'string',
+                insurance_number: 'string',
+                insurance_file_uploaded: 'boolean',
+                created_at: 'timestamp'
+              },
+              notes: 'Creates user account first with role=patient, then creates patient record. Email must be unique.'
             },
             {
               method: 'POST',
               path: '/patients/enhanced',
-              description: 'Create an enhanced patient profile',
-              requiresAuth: false
+              description: 'Create an enhanced patient profile with comprehensive medical information (age and BMI auto-calculated)',
+              requiresAuth: false,
+              body: {
+                email: 'string (required) - User email',
+                password: 'string (required) - User password',
+                full_name: 'string (required)',
+                phone: 'string (required)',
+                date_of_birth: 'date (required) - Age will be auto-calculated',
+                gender: 'string (required)',
+                current_address: 'text (required)',
+                emergency_contact_name: 'string (required)',
+                emergency_contact_phone: 'string (required)',
+                insurance_provider: 'string (required)',
+                insurance_number: 'string (required)',
+                height_cm: 'float (optional) - For BMI calculation',
+                weight_kg: 'float (optional) - For BMI calculation',
+                blood_group: 'string (optional)',
+                smoking_status: 'string (optional)',
+                alcohol_consumption: 'string (optional)',
+                current_medications: 'jsonb (optional) - Array of medication objects',
+                known_allergies: 'jsonb (optional) - Array of allergy objects',
+                chronic_conditions: 'jsonb (optional) - Array of condition objects',
+                past_surgeries: 'jsonb (optional) - Array of surgery objects',
+                family_medical_history: 'jsonb (optional) - Array of family history objects',
+                chief_complaint: 'text (optional)',
+                current_symptoms: 'jsonb (optional) - Array of symptom objects',
+                pain_scale: 'integer (optional) - 1-10',
+                primary_care_physician: 'string (optional)',
+                referring_doctor: 'string (optional)'
+              },
+              response: {
+                message: 'string',
+                patient_id: 'uuid',
+                user_id: 'uuid',
+                email: 'string',
+                profile_completeness: 'integer - Percentage',
+                next_steps: 'array - Suggested next actions'
+              },
+              notes: 'Auto-calculates age from date_of_birth and BMI from height/weight. Creates user account with role=patient.'
             },
             {
               method: 'GET',
               path: '/patients/:patient_id',
-              description: 'Get patient by ID',
+              description: 'Get patient by ID with medical history and vital signs',
               requiresAuth: true,
-              roles: ['patient', 'doctor', 'admin']
+              roles: ['patient', 'doctor', 'admin'],
+              response: 'Complete patient object with medical history and vital signs'
             },
             {
               method: 'PUT',
               path: '/patients/:patient_id',
-              description: 'Update patient profile',
+              description: 'Update patient profile (auto-recalculates age and BMI if relevant fields updated)',
               requiresAuth: true,
-              roles: ['patient', 'admin']
+              roles: ['patient', 'admin'],
+              body: {
+                any_patient_field: 'value (optional)',
+                note: 'Cannot update id or user_id. Age and BMI recalculated automatically.'
+              },
+              response: {
+                message: 'string',
+                patient: 'object - Updated patient',
+                profile_completeness: 'integer'
+              }
             },
             {
               method: 'GET',
               path: '/patients/:patient_id/bookings',
-              description: 'Get patient bookings',
+              description: 'Get patient bookings with surgery, doctor, and hospital details',
               requiresAuth: true,
               roles: ['patient', 'doctor', 'admin']
             },
             {
               method: 'GET',
               path: '/patients/:patient_id/appointments',
-              description: 'Get patient appointments',
+              description: 'Get patient appointments (formatted booking data)',
               requiresAuth: true,
               roles: ['patient', 'doctor', 'admin']
             },
             {
               method: 'GET',
               path: '/patients/:patient_id/medical-history',
-              description: 'Get patient medical history',
+              description: 'Get comprehensive patient medical history including medications, allergies, conditions, surgeries, and family history',
               requiresAuth: true,
-              roles: ['patient', 'doctor', 'admin']
+              roles: ['patient', 'doctor', 'admin'],
+              response: {
+                patient_id: 'uuid',
+                current_medications: 'array',
+                known_allergies: 'array',
+                chronic_conditions: 'array',
+                past_surgeries: 'array',
+                family_medical_history: 'array',
+                medical_history_records: 'array'
+              }
             },
             {
               method: 'POST',
               path: '/patients/:patient_id/vital-signs',
-              description: 'Add patient vital signs',
+              description: 'Add patient vital signs record',
               requiresAuth: true,
-              roles: ['patient', 'doctor', 'admin']
+              roles: ['patient', 'doctor', 'admin'],
+              body: {
+                blood_pressure_systolic: 'integer (optional)',
+                blood_pressure_diastolic: 'integer (optional)',
+                heart_rate: 'integer (optional)',
+                temperature: 'float (optional)',
+                oxygen_saturation: 'float (optional)',
+                respiratory_rate: 'integer (optional)',
+                notes: 'text (optional)'
+              }
             },
             {
               method: 'POST',
               path: '/patients/upload/insurance',
-              description: 'Upload insurance document',
+              description: 'Upload insurance card (front or back)',
               requiresAuth: false,
-              contentType: 'multipart/form-data'
+              contentType: 'multipart/form-data',
+              body: {
+                file: 'file (required) - JPEG, PNG, or PDF',
+                patient_id: 'uuid (required)',
+                document_type: 'string (optional) - insurance_card_front or insurance_card_back'
+              },
+              response: {
+                file_url: 'string - S3 URL',
+                file_name: 'string',
+                file_size: 'integer',
+                upload_date: 'timestamp',
+                file_type: 'string'
+              }
             },
             {
               method: 'POST',
               path: '/patients/upload/medical-document',
-              description: 'Upload medical document',
+              description: 'Upload medical document (lab report, imaging, etc.)',
               requiresAuth: false,
-              contentType: 'multipart/form-data'
+              contentType: 'multipart/form-data',
+              body: {
+                file: 'file (required) - JPEG, PNG, or PDF',
+                patient_id: 'uuid (required)',
+                document_type: 'string (optional) - lab_report, imaging, etc.'
+              }
             },
             {
               method: 'POST',
               path: '/patients/upload/prescription',
-              description: 'Upload prescription',
+              description: 'Upload prescription document',
               requiresAuth: true,
-              contentType: 'multipart/form-data'
+              contentType: 'multipart/form-data',
+              body: {
+                file: 'file (required) - JPEG, PNG, or PDF',
+                patient_id: 'uuid (required)'
+              }
+            },
+            {
+              method: 'GET',
+              path: '/patients/:patient_id/prescriptions',
+              description: 'Get patient prescriptions (placeholder - feature coming soon)',
+              requiresAuth: true,
+              roles: ['patient', 'doctor', 'admin']
             }
           ]
         },

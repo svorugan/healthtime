@@ -75,11 +75,6 @@ const AdminDoctorForm = () => {
     <div className="min-h-screen bg-gradient-to-br from-teal-50 via-cyan-50 to-blue-50 p-4">
       <div className="max-w-4xl mx-auto">
         <Card className="shadow-2xl border-0 bg-white/90 backdrop-blur-sm">
-          <CardHeader className="bg-gradient-to-r from-teal-500 to-blue-500 text-white rounded-t-lg">
-            <CardTitle className="text-2xl text-center">
-              👨‍⚕️ Add New Doctor
-            </CardTitle>
-          </CardHeader>
           <CardContent className="p-8">
             <form onSubmit={handleSubmit} className="space-y-6">
               {/* Basic Information */}

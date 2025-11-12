@@ -12,15 +12,6 @@ const Patient = sequelize.define('Patient', {
     type: DataTypes.STRING(255),
     allowNull: false
   },
-  email: {
-    type: DataTypes.STRING(255),
-    allowNull: false,
-    unique: true
-  },
-  password: {
-    type: DataTypes.STRING(255),
-    allowNull: true
-  },
   phone: {
     type: DataTypes.STRING(20),
     allowNull: false
@@ -195,6 +186,15 @@ const Patient = sequelize.define('Patient', {
     field: 'referring_doctor'
   },
   // System Fields
+  user_id: {
+    type: DataTypes.UUID,
+    allowNull: true,
+    references: {
+      model: 'users',
+      key: 'id'
+    },
+    onDelete: 'CASCADE'
+  },
   last_login: {
     type: DataTypes.DATE
   }

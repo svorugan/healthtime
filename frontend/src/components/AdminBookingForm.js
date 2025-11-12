@@ -25,7 +25,7 @@ const AdminBookingForm = () => {
     surgery_id: '',
     surgeon_id: '',
     hospital_id: '',
-    implant_id: '',
+    implant_id: 'none',
     surgery_date: '',
     notes: ''
   });
@@ -71,7 +71,12 @@ const AdminBookingForm = () => {
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
-      await axios.post(`${API}/bookings`, formData, {
+      // Remove implant_id if it's 'none'
+      const submitData = { ...formData };
+      if (submitData.implant_id === 'none') {
+        submitData.implant_id = '';
+      }
+      await axios.post(`${API}/bookings`, submitData, {
         headers: { Authorization: `Bearer ${token}` }
       });
       
@@ -89,11 +94,6 @@ const AdminBookingForm = () => {
     <div className="min-h-screen bg-gradient-to-br from-teal-50 via-cyan-50 to-blue-50 p-4">
       <div className="max-w-4xl mx-auto">
         <Card className="shadow-2xl border-0 bg-white/90 backdrop-blur-sm">
-          <CardHeader className="bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-t-lg">
-            <CardTitle className="text-2xl text-center">
-              📅 Create New Booking
-            </CardTitle>
-          </CardHeader>
           <CardContent className="p-8">
             <form onSubmit={handleSubmit} className="space-y-6">
               {/* Patient Selection */}
@@ -172,7 +172,7 @@ const AdminBookingForm = () => {
                     <SelectValue placeholder="Select implant (if needed)" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">None</SelectItem>
+                    <SelectItem value="none">None</SelectItem>
                     {implants.map((implant) => (
                       <SelectItem key={implant.id} value={implant.id.toString()}>
                         {implant.name} - {implant.brand} - ₹{implant.price?.toLocaleString()}
