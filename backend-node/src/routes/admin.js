@@ -36,18 +36,148 @@ router.get('/doctors', authenticate, authorize('admin'), async (req, res) => {
 // Get all patients (Admin only)
 router.get('/patients', authenticate, authorize('admin'), async (req, res) => {
   try {
-    const patients = await Patient.findAll();
+    const patients = await Patient.findAll({
+      include: [
+        {
+          model: User,
+          as: 'user',
+          attributes: ['id', 'email', 'is_active', 'email_verified', 'last_login']
+        }
+      ],
+      order: [['created_at', 'DESC']]
+    });
     const response = patients.map(p => ({
       id: p.id,
-      name: p.full_name,
+      user_id: p.user_id,
+      email: p.user?.email || null,
       full_name: p.full_name,
-      email: p.email,
-      phone: p.phone
+      phone: p.phone,
+      age: p.age,
+      gender: p.gender,
+      date_of_birth: p.date_of_birth,
+      city: p.city,
+      state: p.state,
+      pincode: p.pincode,
+      blood_group: p.blood_group,
+      insurance_provider: p.insurance_provider,
+      insurance_number: p.insurance_number,
+      emergency_contact_name: p.emergency_contact_name,
+      emergency_contact_phone: p.emergency_contact_phone,
+      is_active: p.user?.is_active,
+      created_at: p.created_at
     }));
     return res.json(response);
   } catch (error) {
     console.error('Failed to fetch patients:', error);
     return res.json([]);
+  }
+});
+
+// Get single patient details (Admin only)
+router.get('/patients/:patient_id', authenticate, authorize('admin'), async (req, res) => {
+  const { patient_id } = req.params;
+  
+  try {
+    const patient = await Patient.findByPk(patient_id, {
+      include: [
+        {
+          model: User,
+          as: 'user',
+          attributes: ['id', 'email', 'is_active', 'email_verified', 'last_login', 'created_at']
+        }
+      ]
+    });
+
+    if (!patient) {
+      return res.status(404).json({ detail: 'Patient not found' });
+    }
+
+    return res.json({
+      // Basic Info
+      id: patient.id,
+      user_id: patient.user_id,
+      email: patient.user?.email,
+      full_name: patient.full_name,
+      phone: patient.phone,
+      alternate_phone: patient.alternate_phone,
+      
+      // Personal Info
+      date_of_birth: patient.date_of_birth,
+      age: patient.age,
+      gender: patient.gender,
+      occupation: patient.occupation,
+      preferred_language: patient.preferred_language,
+      
+      // Address
+      current_address: patient.current_address,
+      permanent_address: patient.permanent_address,
+      city: patient.city,
+      state: patient.state,
+      pincode: patient.pincode,
+      
+      // Emergency Contact
+      emergency_contact_name: patient.emergency_contact_name,
+      emergency_contact_phone: patient.emergency_contact_phone,
+      emergency_contact_relationship: patient.emergency_contact_relationship,
+      
+      // Communication
+      preferred_communication: patient.preferred_communication,
+      
+      // Insurance
+      insurance_provider: patient.insurance_provider,
+      insurance_number: patient.insurance_number,
+      insurance_plan_type: patient.insurance_plan_type,
+      insurance_group_number: patient.insurance_group_number,
+      policy_holder_name: patient.policy_holder_name,
+      employer_name: patient.employer_name,
+      secondary_insurance_provider: patient.secondary_insurance_provider,
+      secondary_insurance_number: patient.secondary_insurance_number,
+      insurance_card_front_url: patient.insurance_card_front_url,
+      insurance_card_back_url: patient.insurance_card_back_url,
+      insurance_file_uploaded: patient.insurance_file_uploaded,
+      preferred_payment_method: patient.preferred_payment_method,
+      financial_assistance_needed: patient.financial_assistance_needed,
+      insurance_preauth_status: patient.insurance_preauth_status,
+      
+      // Medical Info
+      blood_group: patient.blood_group,
+      height_cm: patient.height_cm,
+      weight_kg: patient.weight_kg,
+      bmi: patient.bmi,
+      smoking_status: patient.smoking_status,
+      alcohol_consumption: patient.alcohol_consumption,
+      substance_use_history: patient.substance_use_history,
+      
+      // Medical History (JSONB)
+      current_medications: patient.current_medications,
+      known_allergies: patient.known_allergies,
+      chronic_conditions: patient.chronic_conditions,
+      past_surgeries: patient.past_surgeries,
+      family_medical_history: patient.family_medical_history,
+      
+      // Current Health
+      chief_complaint: patient.chief_complaint,
+      current_symptoms: patient.current_symptoms,
+      symptom_duration: patient.symptom_duration,
+      pain_scale: patient.pain_scale,
+      
+      // Healthcare Providers
+      primary_care_physician: patient.primary_care_physician,
+      referring_doctor: patient.referring_doctor,
+      
+      // User Account Info
+      user_email: patient.user?.email,
+      is_active: patient.user?.is_active,
+      email_verified: patient.user?.email_verified,
+      last_login: patient.user?.last_login || patient.last_login,
+      
+      // Timestamps
+      created_at: patient.created_at,
+      updated_at: patient.updated_at
+    });
+  } catch (error) {
+    console.error('Failed to fetch patient:', error);
+    return res.status(500).json({ detail: 'Failed to fetch patient: ' + error.message });
   }
 });
 

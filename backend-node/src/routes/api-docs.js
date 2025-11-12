@@ -100,14 +100,23 @@ router.get('/endpoints', authenticate, authorize('admin'), async (req, res) => {
             {
               method: 'GET',
               path: '/admin/patients',
-              description: 'Get all patients',
+              description: 'Get all patients with comprehensive data',
               requiresAuth: true,
-              roles: ['admin']
+              roles: ['admin'],
+              response: 'Array of patient objects with user info, contact details, insurance, and medical data'
+            },
+            {
+              method: 'GET',
+              path: '/admin/patients/:patient_id',
+              description: 'Get single patient with complete details including all medical history',
+              requiresAuth: true,
+              roles: ['admin'],
+              response: 'Complete patient object with all fields including JSONB medical data'
             },
             {
               method: 'POST',
               path: '/admin/patients',
-              description: 'Create a new patient',
+              description: 'Create a new patient (admin)',
               requiresAuth: true,
               roles: ['admin'],
               body: {
