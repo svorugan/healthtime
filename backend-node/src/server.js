@@ -3,7 +3,22 @@ const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 const multer = require('multer');
-require('dotenv').config();
+const path = require('path');
+
+// Load environment-specific .env file
+const envFile = process.env.NODE_ENV === 'production' 
+  ? '.env.production' 
+  : '.env.development.local';
+
+require('dotenv').config({ 
+  path: path.resolve(__dirname, '..', envFile),
+  override: false // Don't override existing env vars
+});
+
+// Fallback to .env if environment-specific file doesn't exist
+require('dotenv').config({ 
+  path: path.resolve(__dirname, '..', '.env')
+});
 
 const { testConnection } = require('./config/database');
 const authRoutes = require('./routes/auth');

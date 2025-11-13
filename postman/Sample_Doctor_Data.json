@@ -1,0 +1,180 @@
+{
+  "sample_doctors": [
+    {
+      "email": "dr.sharma@healthtime.com",
+      "password": "doctor123",
+      "full_name": "Dr. Rajesh Sharma",
+      "phone": "+91-9876543210",
+      "date_of_birth": "1978-05-15",
+      "gender": "Male",
+      "primary_specialization": "Orthopedic Surgery",
+      "secondary_specializations": ["Sports Medicine", "Joint Replacement"],
+      "medical_council_number": "MCI-12345-2015",
+      "medical_council_state": "Maharashtra",
+      "license_expiry_date": "2026-12-31",
+      "experience_years": 15,
+      "post_masters_years": 10,
+      "bio": "Experienced orthopedic surgeon specializing in joint replacement and sports injuries. Completed fellowship in arthroscopic surgery from USA.",
+      "consultation_fee": 1500,
+      "surgery_fee": 150000,
+      "followup_fee": 800,
+      "training_type": "Fellowship",
+      "fellowships": 2,
+      "procedures_completed": 1200,
+      "google_reviews_link": "https://g.page/dr-sharma-reviews",
+      "website_url": "https://drsharma.com",
+      "linkedin_url": "https://linkedin.com/in/dr-rajesh-sharma",
+      "online_consultation": true,
+      "in_person_consultation": true,
+      "emergency_services": false,
+      "location": "Mumbai, Maharashtra",
+      "clinic_address": "123, Medical Plaza, Andheri West, Mumbai",
+      "city": "Mumbai",
+      "state": "Maharashtra",
+      "pincode": "400058",
+      "rating": 4.8,
+      "total_reviews": 245,
+      "languages_spoken": ["English", "Hindi", "Marathi"]
+    },
+    {
+      "email": "dr.patel@healthtime.com",
+      "password": "doctor123",
+      "full_name": "Dr. Priya Patel",
+      "phone": "+91-9876543211",
+      "date_of_birth": "1985-08-22",
+      "gender": "Female",
+      "primary_specialization": "Cardiothoracic Surgery",
+      "secondary_specializations": ["Minimally Invasive Surgery", "Cardiac Transplant"],
+      "medical_council_number": "MCI-67890-2018",
+      "medical_council_state": "Gujarat",
+      "license_expiry_date": "2027-06-30",
+      "experience_years": 10,
+      "post_masters_years": 5,
+      "bio": "Specialized in minimally invasive cardiac procedures with expertise in robotic-assisted surgery. Trained at leading cardiac centers in India and abroad.",
+      "consultation_fee": 2000,
+      "surgery_fee": 350000,
+      "followup_fee": 1000,
+      "training_type": "Fellowship",
+      "fellowships": 1,
+      "procedures_completed": 650,
+      "google_reviews_link": "https://g.page/dr-patel-reviews",
+      "website_url": "https://drpriyapatel.com",
+      "linkedin_url": "https://linkedin.com/in/dr-priya-patel",
+      "online_consultation": true,
+      "in_person_consultation": true,
+      "emergency_services": true,
+      "location": "Ahmedabad, Gujarat",
+      "clinic_address": "456, Heart Care Center, Satellite Road, Ahmedabad",
+      "city": "Ahmedabad",
+      "state": "Gujarat",
+      "pincode": "380015",
+      "rating": 4.9,
+      "total_reviews": 189,
+      "languages_spoken": ["English", "Hindi", "Gujarati"]
+    },
+    {
+      "email": "dr.kumar@healthtime.com",
+      "password": "doctor123",
+      "full_name": "Dr. Anil Kumar",
+      "phone": "+91-9876543212",
+      "date_of_birth": "1980-03-10",
+      "gender": "Male",
+      "primary_specialization": "Neurosurgery",
+      "secondary_specializations": ["Spine Surgery", "Brain Tumor Surgery"],
+      "medical_council_number": "MCI-11223-2016",
+      "medical_council_state": "Karnataka",
+      "license_expiry_date": "2028-03-31",
+      "experience_years": 12,
+      "post_masters_years": 7,
+      "bio": "Expert neurosurgeon with specialization in complex brain and spine surgeries. Pioneer in endoscopic neurosurgery techniques in South India.",
+      "consultation_fee": 2500,
+      "surgery_fee": 400000,
+      "followup_fee": 1200,
+      "training_type": "Fellowship",
+      "fellowships": 2,
+      "procedures_completed": 890,
+      "google_reviews_link": "https://g.page/dr-kumar-reviews",
+      "website_url": "https://dranilkumar.com",
+      "linkedin_url": "https://linkedin.com/in/dr-anil-kumar",
+      "online_consultation": false,
+      "in_person_consultation": true,
+      "emergency_services": true,
+      "location": "Bangalore, Karnataka",
+      "clinic_address": "789, Neuro Care Hospital, Indiranagar, Bangalore",
+      "city": "Bangalore",
+      "state": "Karnataka",
+      "pincode": "560038",
+      "rating": 4.7,
+      "total_reviews": 312,
+      "languages_spoken": ["English", "Hindi", "Kannada", "Tamil"]
+    }
+  ],
+  "doctor_update_profile": {
+    "bio": "Updated bio with more details about specializations and achievements",
+    "consultation_fee": 2000,
+    "surgery_fee": 175000,
+    "followup_fee": 900,
+    "google_reviews_link": "https://g.page/updated-reviews",
+    "website_url": "https://updated-website.com",
+    "linkedin_url": "https://linkedin.com/in/updated-profile",
+    "languages_spoken": ["English", "Hindi", "Marathi", "Tamil"],
+    "secondary_specializations": ["Sports Medicine", "Joint Replacement", "Arthroscopy"]
+  },
+  "doctor_availability_update": {
+    "online_consultation": true,
+    "in_person_consultation": true,
+    "emergency_services": false,
+    "online_status": true
+  },
+  "doctor_surgery_types_update": {
+    "surgery_types": [
+      "uuid-of-surgery-1",
+      "uuid-of-surgery-2",
+      "uuid-of-surgery-3"
+    ],
+    "note": "Replace with actual surgery UUIDs from your database. First surgery in array becomes primary."
+  },
+  "admin_credentials": {
+    "email": "admin@healthtime.com",
+    "password": "admin123",
+    "role": "admin"
+  },
+  "doctor_credentials": {
+    "email": "dr.sharma@healthtime.com",
+    "password": "doctor123",
+    "role": "doctor"
+  },
+  "document_types": [
+    "medical_degree",
+    "postgraduate_degree",
+    "council_certificate",
+    "photo_id",
+    "indemnity_insurance",
+    "tax_certificate",
+    "hospital_privilege"
+  ],
+  "api_endpoints_summary": {
+    "public": [
+      "GET /api/doctors/surgeons - Get all approved surgeons",
+      "GET /api/doctors/surgeons?location=Mumbai - Filter by location",
+      "GET /api/doctors/:doctor_id - Get specific doctor details",
+      "GET /api/doctors/:doctor_id/surgeries - Get doctor's surgery types"
+    ],
+    "doctor_protected": [
+      "PUT /api/doctors/:doctor_id - Update doctor profile",
+      "PUT /api/doctors/:doctor_id/availability - Update availability",
+      "PUT /api/doctors/:doctor_id/surgeries - Update surgery types",
+      "GET /api/doctors/:doctor_id/bookings - Get doctor's bookings",
+      "GET /api/doctors/:doctor_id/schedule - Get doctor's schedule",
+      "GET /api/doctors/:doctor_id/patients - Get doctor's patients"
+    ],
+    "admin_protected": [
+      "GET /api/doctors/admin/pending - Get pending doctor approvals",
+      "PATCH /api/doctors/admin/:doctor_id/approve - Approve doctor",
+      "PATCH /api/doctors/admin/:doctor_id/reject - Reject doctor"
+    ],
+    "file_upload": [
+      "POST /api/doctors/upload/verification - Upload verification documents"
+    ]
+  }
+}

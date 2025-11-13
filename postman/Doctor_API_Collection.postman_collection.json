@@ -1,0 +1,509 @@
+{
+  "info": {
+    "name": "Healthtime - Doctor API",
+    "description": "Complete collection of Doctor API endpoints for testing",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8000/api",
+      "type": "string"
+    },
+    {
+      "key": "auth_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "doctor_id",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Login as Admin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.collectionVariables.set('auth_token', jsonData.access_token);",
+                  "    console.log('Token saved:', jsonData.access_token);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@healthtime.com\",\n  \"password\": \"admin123\",\n  \"role\": \"admin\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "login"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Login as Doctor",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.collectionVariables.set('auth_token', jsonData.access_token);",
+                  "    pm.collectionVariables.set('doctor_id', jsonData.user_id);",
+                  "    console.log('Token saved:', jsonData.access_token);",
+                  "    console.log('Doctor ID saved:', jsonData.user_id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"dr.sharma@healthtime.com\",\n  \"password\": \"doctor123\",\n  \"role\": \"doctor\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "login"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Register Doctor",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"dr.sharma@healthtime.com\",\n  \"password\": \"doctor123\",\n  \"full_name\": \"Dr. Rajesh Sharma\",\n  \"phone\": \"+91-9876543210\",\n  \"primary_specialization\": \"Orthopedic Surgery\",\n  \"medical_council_number\": \"MCI-12345-2015\",\n  \"medical_council_state\": \"Maharashtra\",\n  \"experience_years\": 15,\n  \"consultation_fee\": 1500,\n  \"bio\": \"Experienced orthopedic surgeon specializing in joint replacement and sports injuries\",\n  \"location\": \"Mumbai, Maharashtra\",\n  \"city\": \"Mumbai\",\n  \"state\": \"Maharashtra\",\n  \"pincode\": \"400001\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/register/doctor",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "register", "doctor"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Public Endpoints",
+      "item": [
+        {
+          "name": "Get All Approved Surgeons",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/doctors/surgeons",
+              "host": ["{{base_url}}"],
+              "path": ["doctors", "surgeons"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Surgeons by Location",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/doctors/surgeons?location=Mumbai",
+              "host": ["{{base_url}}"],
+              "path": ["doctors", "surgeons"],
+              "query": [
+                {
+                  "key": "location",
+                  "value": "Mumbai"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Doctor by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/doctors/{{doctor_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["doctors", "{{doctor_id}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Doctor's Surgeries",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/doctors/{{doctor_id}}/surgeries",
+              "host": ["{{base_url}}"],
+              "path": ["doctors", "{{doctor_id}}", "surgeries"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Doctor Protected Endpoints",
+      "item": [
+        {
+          "name": "Update Doctor Profile",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"bio\": \"Updated bio: Experienced orthopedic surgeon with 15+ years specializing in joint replacement, sports injuries, and minimally invasive procedures\",\n  \"consultation_fee\": 2000,\n  \"surgery_fee\": 150000,\n  \"followup_fee\": 800,\n  \"google_reviews_link\": \"https://g.page/dr-sharma-reviews\",\n  \"website_url\": \"https://drsharma.com\",\n  \"linkedin_url\": \"https://linkedin.com/in/dr-rajesh-sharma\",\n  \"languages_spoken\": [\"English\", \"Hindi\", \"Marathi\"]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/doctors/{{doctor_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["doctors", "{{doctor_id}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Doctor Availability",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"online_consultation\": true,\n  \"in_person_consultation\": true,\n  \"emergency_services\": false,\n  \"online_status\": true\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/doctors/{{doctor_id}}/availability",
+              "host": ["{{base_url}}"],
+              "path": ["doctors", "{{doctor_id}}", "availability"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Doctor Surgery Types",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"surgery_types\": [\n    \"surgery-id-1\",\n    \"surgery-id-2\",\n    \"surgery-id-3\"\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/doctors/{{doctor_id}}/surgeries",
+              "host": ["{{base_url}}"],
+              "path": ["doctors", "{{doctor_id}}", "surgeries"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Doctor's Bookings",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/doctors/{{doctor_id}}/bookings",
+              "host": ["{{base_url}}"],
+              "path": ["doctors", "{{doctor_id}}", "bookings"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Doctor's Schedule",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/doctors/{{doctor_id}}/schedule?start_date=2024-01-01&end_date=2024-12-31",
+              "host": ["{{base_url}}"],
+              "path": ["doctors", "{{doctor_id}}", "schedule"],
+              "query": [
+                {
+                  "key": "start_date",
+                  "value": "2024-01-01"
+                },
+                {
+                  "key": "end_date",
+                  "value": "2024-12-31"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Doctor's Patients",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/doctors/{{doctor_id}}/patients",
+              "host": ["{{base_url}}"],
+              "path": ["doctors", "{{doctor_id}}", "patients"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Admin Endpoints",
+      "item": [
+        {
+          "name": "Get Pending Doctors",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/doctors/admin/pending",
+              "host": ["{{base_url}}"],
+              "path": ["doctors", "admin", "pending"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Approve Doctor",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/doctors/admin/{{doctor_id}}/approve",
+              "host": ["{{base_url}}"],
+              "path": ["doctors", "admin", "{{doctor_id}}", "approve"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Reject Doctor",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/doctors/admin/{{doctor_id}}/reject",
+              "host": ["{{base_url}}"],
+              "path": ["doctors", "admin", "{{doctor_id}}", "reject"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get All Users",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/users",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "users"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get All Doctors (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/doctors",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "doctors"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get All Patients (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/patients",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "patients"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get All Bookings (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/bookings",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "bookings"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "File Upload",
+      "item": [
+        {
+          "name": "Upload Doctor Verification Document",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": []
+                },
+                {
+                  "key": "doctor_id",
+                  "value": "{{doctor_id}}",
+                  "type": "text"
+                },
+                {
+                  "key": "document_type",
+                  "value": "medical_degree",
+                  "description": "Options: medical_degree, postgraduate_degree, council_certificate, photo_id, indemnity_insurance, tax_certificate, hospital_privilege",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/doctors/upload/verification",
+              "host": ["{{base_url}}"],
+              "path": ["doctors", "upload", "verification"]
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

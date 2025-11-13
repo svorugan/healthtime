@@ -277,12 +277,12 @@ router.post('/register/doctor', [
         email_verified: false
       }, { transaction: t });
 
-      // Prepare doctor data
+      // Prepare doctor data (exclude email and password as they're in users table)
+      const { email, password, ...doctorProfileFields } = doctorData;
       const doctorProfileData = {
-        ...doctorData,
+        ...doctorProfileFields,
         id: user.id,
         user_id: user.id,
-        password: hashedPassword,
         status: 'pending'
       };
 
@@ -359,16 +359,22 @@ router.post('/register/doctor/enhanced', [
   const doctorData = req.body;
 
   try {
-    // Check if email already exists
-    const existingEmail = await Doctor.findOne({ where: { email: doctorData.email } });
-    if (existingEmail) {
-      return res.status(400).json({ detail: 'Email already registered' });
+    // Check if email already exists in users table
+    const existingUser = await User.findByEmail(doctorData.email);
+    if (existingUser) {
+      return res.status(400).json({ 
+        detail: 'Email already registered',
+        message: 'An account with this email already exists'
+      });
     }
 
     // Check if medical council number already exists
     const existingCouncil = await Doctor.findOne({ where: { medical_council_number: doctorData.medical_council_number } });
     if (existingCouncil) {
-      return res.status(400).json({ detail: 'Medical council number already registered' });
+      return res.status(400).json({ 
+        detail: 'Medical council number already registered',
+        message: 'This medical council number is already in use'
+      });
     }
 
     const hashedPassword = await hashPassword(doctorData.password);
@@ -377,74 +383,90 @@ router.post('/register/doctor/enhanced', [
     // Use total_experience_years if provided, otherwise use experience_years
     const experience = doctorData.total_experience_years || doctorData.experience_years || 0;
     
-    // Prepare doctor data with proper field mapping
-    const doctorProfileData = {
-      email: doctorData.email,
-      password: hashedPassword,
-      full_name: doctorData.full_name,
-      phone: doctorData.phone,
-      date_of_birth: doctorData.date_of_birth,
-      gender: doctorData.gender,
-      
-      // Professional credentials
-      primary_specialization: doctorData.primary_specialization,
-      secondary_specializations: doctorData.secondary_specializations || [],
-      medical_council_number: doctorData.medical_council_number,
-      medical_council_state: doctorData.medical_council_state,
-      
-      // Experience - map total_experience_years to experience_years
-      experience_years: experience,
-      post_masters_years: doctorData.post_masters_years || 0,
-      
-      // Fees
-      consultation_fee: doctorData.consultation_fee || 0,
-      surgery_fee: doctorData.surgery_fee || 0,
-      followup_fee: doctorData.followup_fee,
-      
-      // Training
-      training_type: doctorData.training_type,
-      fellowships: doctorData.fellowship_details?.length || 0,
-      procedures_completed: doctorData.total_surgeries_performed || 0,
-      
-      // Online presence
-      google_reviews_link: doctorData.google_reviews_link,
-      website_url: doctorData.professional_website,
-      linkedin_url: doctorData.linkedin_profile,
-      
-      // Services
-      online_consultation: doctorData.online_consultation || false,
-      emergency_services: doctorData.emergency_services || false,
-      
-      // Location
-      clinic_address: doctorData.clinic_address,
-      city: doctorData.city,
-      state: doctorData.state,
-      pincode: doctorData.pincode,
-      
-      // Bio
-      bio: doctorData.bio,
-      
-      // Languages (ensure it's an array for JSONB)
-      languages_spoken: Array.isArray(doctorData.languages_spoken) 
-        ? doctorData.languages_spoken 
-        : (doctorData.languages_spoken ? [doctorData.languages_spoken] : ['English']),
-      
-      // Status
-      status: 'pending',
-      verification_status: 'pending'
-    };
+    // Create user and doctor profile in a transaction
+    const result = await User.sequelize.transaction(async (t) => {
+      // Create user (inactive until approved)
+      const user = await User.create({
+        email: doctorData.email,
+        password: hashedPassword,
+        role: 'doctor',
+        is_active: false, // Doctors need approval
+        email_verified: false
+      }, { transaction: t });
 
-    const doctor = await Doctor.create(doctorProfileData);
+      // Prepare doctor data with proper field mapping (exclude email and password)
+      const doctorProfileData = {
+        id: user.id,
+        user_id: user.id,
+        full_name: doctorData.full_name,
+        phone: doctorData.phone,
+        date_of_birth: doctorData.date_of_birth,
+        gender: doctorData.gender,
+        
+        // Professional credentials
+        primary_specialization: doctorData.primary_specialization,
+        secondary_specializations: doctorData.secondary_specializations || [],
+        medical_council_number: doctorData.medical_council_number,
+        medical_council_state: doctorData.medical_council_state,
+        
+        // Experience - map total_experience_years to experience_years
+        experience_years: experience,
+        post_masters_years: doctorData.post_masters_years || 0,
+        
+        // Fees
+        consultation_fee: doctorData.consultation_fee || 0,
+        surgery_fee: doctorData.surgery_fee || 0,
+        followup_fee: doctorData.followup_fee,
+        
+        // Training
+        training_type: doctorData.training_type,
+        fellowships: doctorData.fellowship_details?.length || 0,
+        procedures_completed: doctorData.total_surgeries_performed || 0,
+        
+        // Online presence
+        google_reviews_link: doctorData.google_reviews_link,
+        website_url: doctorData.professional_website,
+        linkedin_url: doctorData.linkedin_profile,
+        
+        // Services
+        online_consultation: doctorData.online_consultation || false,
+        emergency_services: doctorData.emergency_services || false,
+        
+        // Location
+        clinic_address: doctorData.clinic_address,
+        city: doctorData.city,
+        state: doctorData.state,
+        pincode: doctorData.pincode,
+        
+        // Bio
+        bio: doctorData.bio,
+        
+        // Languages (ensure it's an array for JSONB)
+        languages_spoken: Array.isArray(doctorData.languages_spoken) 
+          ? doctorData.languages_spoken 
+          : (doctorData.languages_spoken ? [doctorData.languages_spoken] : ['English']),
+        
+        // Status
+        status: 'pending',
+        verification_status: 'pending'
+      };
 
-    // Calculate profile completeness
-    const completeness = calculateDoctorProfileCompleteness(doctor);
-    doctor.profile_completeness = completeness;
-    await doctor.save();
+      const doctor = await Doctor.create(doctorProfileData, { transaction: t });
+
+      // Calculate profile completeness
+      const completeness = calculateDoctorProfileCompleteness(doctor);
+      doctor.profile_completeness = completeness;
+      await doctor.save({ transaction: t });
+
+      return { user, doctor, completeness };
+    });
 
     return res.status(201).json({
       message: 'Enhanced doctor registration submitted for approval',
-      doctor_id: doctor.id,
-      profile_completeness: completeness,
+      user_id: result.user.id,
+      doctor_id: result.doctor.id,
+      profile_completeness: result.completeness,
+      status: 'pending_approval',
       verification_required: [
         'Medical Council Certificate',
         'Degree Certificates',

@@ -7,15 +7,13 @@ const Doctor = sequelize.define('Doctor', {
     defaultValue: DataTypes.UUIDV4,
     primaryKey: true
   },
-  // Authentication
-  email: {
-    type: DataTypes.STRING(255),
-    allowNull: false,
-    unique: true
-  },
-  password: {
-    type: DataTypes.STRING(255),
-    allowNull: false
+  user_id: {
+    type: DataTypes.UUID,
+    allowNull: true,
+    references: {
+      model: 'users',
+      key: 'id'
+    }
   },
   // Basic Information
   full_name: {

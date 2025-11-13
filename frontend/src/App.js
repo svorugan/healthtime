@@ -124,10 +124,17 @@ const PatientLoginPage = () => {
       const response = await axios.post(`${API}/auth/login`, { email, password });
       const { access_token, user_role, user_id } = response.data;
       
+      if (user_role !== 'patient') {
+        toast.error('This account is not registered as a patient.');
+        setLoading(false);
+        return;
+      }
+      
       login({ role: user_role, id: user_id }, access_token);
       
       toast.success('Welcome back! 🎉');
-      navigate('/');
+      // Navigate to patient dashboard
+      navigate('/patient');
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Login failed. Please check your credentials.');
     } finally {
@@ -2892,6 +2899,7 @@ const bookingReducer = (state, action) => {
 
 const MainApp = () => {
   const location = useLocation();
+  const { user } = useAuth();
   const [state, dispatch] = useReducer(bookingReducer, { 
     currentStep: 0, 
     bookingData: {} 
@@ -2899,12 +2907,16 @@ const MainApp = () => {
 
   console.log('MainApp render - currentStep:', state.currentStep, 'bookingData:', state.bookingData);
 
-  // Check if coming from enhanced registration
+  // Check if coming from enhanced registration or login
   useEffect(() => {
     if (location.state?.step && location.state?.patientId) {
+      // If coming from login, use the step as-is; if from registration, subtract 1
+      const targetStep = location.state.fromLogin ? location.state.step : location.state.step - 1;
+      console.log('Navigation state detected - step:', location.state.step, 'fromLogin:', location.state.fromLogin, 'targetStep:', targetStep);
+      
       dispatch({ 
         type: 'SET_STEP', 
-        payload: location.state.step - 1 
+        payload: targetStep
       });
       dispatch({ 
         type: 'UPDATE_DATA', 
@@ -2914,8 +2926,21 @@ const MainApp = () => {
           enhanced: location.state.enhanced
         }
       });
+    } else if (user && user.role === 'patient' && state.currentStep === 0) {
+      // If user is logged in as patient and at registration step, skip to step 1
+      console.log('Authenticated patient detected, skipping registration');
+      dispatch({ 
+        type: 'SET_STEP', 
+        payload: 1 
+      });
+      dispatch({ 
+        type: 'UPDATE_DATA', 
+        payload: {
+          patientId: user.id
+        }
+      });
     }
-  }, [location.state]);
+  }, [location.state, user, state.currentStep]);
 
   const handleNext = (data) => {
     console.log('MainApp handleNext called with data:', data);
@@ -6722,6 +6747,10 @@ function App() {
             <Route path="/admin/implant/:id/edit" element={<ProtectedRoute role="admin"><AdminLayout title="🦴 Edit Implant" subtitle="Update implant information"><ImplantRegistration /></AdminLayout></ProtectedRoute>} />
             <Route path="/admin/api-explorer" element={<ProtectedRoute role="admin"><AdminLayout title="🔌 API Explorer" subtitle="Explore and test all backend API endpoints"><ApiExplorer /></AdminLayout></ProtectedRoute>} />
             
+            {/* Patient Routes */}
+            <Route path="/patient" element={<ProtectedRoute role="patient"><PatientDashboard /></ProtectedRoute>} />
+            <Route path="/patient/booking" element={<ProtectedRoute role="patient"><PatientBookingFlow /></ProtectedRoute>} />
+            
             {/* Doctor Routes */}
             <Route path="/doctor" element={<ProtectedRoute role="doctor"><DoctorDashboard /></ProtectedRoute>} />
             
@@ -6768,6 +6797,532 @@ const ProtectedRoute = ({ children, role }) => {
 
 // Duplicate AdminRegistration component removed - using enhanced version above
 
+// Patient Dashboard Component
+const PatientDashboard = () => {
+  const { logout, user } = useAuth();
+  const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const [patientProfile, setPatientProfile] = useState(null);
+  const [bookings, setBookings] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchPatientData();
+  }, []);
+
+  const fetchPatientData = async () => {
+    try {
+      // Fetch patient profile by user_id
+      const profileResponse = await axios.get(`${API}/patients/by-user/${user.id}`);
+      setPatientProfile(profileResponse.data);
+      
+      // Fetch patient bookings
+      try {
+        const bookingsResponse = await axios.get(`${API}/patients/${profileResponse.data.id}/bookings`);
+        setBookings(bookingsResponse.data);
+      } catch (bookingError) {
+        console.log('No bookings found:', bookingError);
+        setBookings([]);
+      }
+    } catch (error) {
+      console.error('Failed to fetch patient data:', error);
+      toast.error('Failed to load your profile');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleStartBooking = () => {
+    navigate('/patient/booking', { 
+      state: { 
+        patientData: patientProfile
+      } 
+    });
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-cyan-50 via-teal-50 to-blue-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-600 mx-auto mb-4"></div>
+          <p className="text-cyan-700">Loading your dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-cyan-50 via-teal-50 to-blue-50 p-4">
+      <div className="max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="flex justify-between items-center mb-8">
+          <div>
+            <h1 className="text-4xl font-bold bg-gradient-to-r from-cyan-600 to-blue-600 bg-clip-text text-transparent">
+              Patient Dashboard
+            </h1>
+            <p className="text-lg text-slate-600 mt-2">
+              Welcome back, {patientProfile?.full_name || 'Patient'}! 👋
+            </p>
+          </div>
+          <div className="flex space-x-3">
+            <Button
+              onClick={() => setActiveTab('profile')}
+              variant="outline" 
+              className="border-cyan-300 text-cyan-600 hover:bg-cyan-50"
+            >
+              <span className="mr-2">👤</span>
+              My Profile
+            </Button>
+            <Button onClick={logout} variant="outline" className="border-red-300 text-red-600 hover:bg-red-50">
+              <span className="mr-2">🚪</span>
+              Logout
+            </Button>
+          </div>
+        </div>
+
+        {/* Quick Actions */}
+        <div className="mb-8">
+          <Card className="shadow-lg border-0 bg-gradient-to-r from-cyan-500 via-teal-500 to-blue-500 text-white">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-2xl font-bold mb-2">🏥 Ready to book a surgery?</h2>
+                  <p className="text-cyan-50">Find the best surgeons, implants, and hospitals for your needs</p>
+                </div>
+                <Button 
+                  onClick={handleStartBooking}
+                  className="bg-white text-cyan-600 hover:bg-cyan-50 font-semibold px-8 py-6 text-lg"
+                >
+                  <span className="mr-2">🚀</span>
+                  Start Booking
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Main Content */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-4 bg-white shadow-sm">
+            <TabsTrigger value="dashboard">📊 Dashboard</TabsTrigger>
+            <TabsTrigger value="bookings">📅 My Bookings</TabsTrigger>
+            <TabsTrigger value="profile">👤 Profile</TabsTrigger>
+            <TabsTrigger value="documents">📋 Documents</TabsTrigger>
+          </TabsList>
+
+          {/* Dashboard Tab */}
+          <TabsContent value="dashboard" className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <Card className="shadow-lg border-0 bg-gradient-to-r from-blue-500 to-cyan-500 text-white">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-blue-100">Total Bookings</p>
+                      <p className="text-3xl font-bold">{bookings.length}</p>
+                    </div>
+                    <span className="text-4xl opacity-80">📅</span>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="shadow-lg border-0 bg-gradient-to-r from-green-500 to-emerald-500 text-white">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-green-100">Upcoming</p>
+                      <p className="text-3xl font-bold">
+                        {bookings.filter(b => b.status === 'confirmed' || b.status === 'pending').length}
+                      </p>
+                    </div>
+                    <span className="text-4xl opacity-80">⏰</span>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="shadow-lg border-0 bg-gradient-to-r from-purple-500 to-pink-500 text-white">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-purple-100">Completed</p>
+                      <p className="text-3xl font-bold">
+                        {bookings.filter(b => b.status === 'completed').length}
+                      </p>
+                    </div>
+                    <span className="text-4xl opacity-80">✅</span>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Recent Activity */}
+            <Card className="shadow-lg">
+              <CardHeader>
+                <CardTitle className="text-2xl">📋 Recent Activity</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {bookings.length === 0 ? (
+                  <div className="text-center py-12">
+                    <span className="text-6xl mb-4 block">🏥</span>
+                    <p className="text-xl text-slate-600 mb-4">No bookings yet</p>
+                    <p className="text-slate-500 mb-6">Start your healthcare journey by booking a surgery</p>
+                    <Button 
+                      onClick={handleStartBooking}
+                      className="bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700"
+                    >
+                      <span className="mr-2">🚀</span>
+                      Book Your First Surgery
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {bookings.slice(0, 5).map((booking) => (
+                      <div key={booking.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-lg">
+                        <div>
+                          <p className="font-semibold">{booking.surgery?.name || 'Surgery'}</p>
+                          <p className="text-sm text-slate-600">
+                            {booking.hospital?.name || 'Hospital'} • {booking.doctor?.full_name || 'Doctor'}
+                          </p>
+                        </div>
+                        <Badge className={
+                          booking.status === 'confirmed' ? 'bg-green-500' :
+                          booking.status === 'pending' ? 'bg-yellow-500' :
+                          booking.status === 'completed' ? 'bg-blue-500' :
+                          'bg-slate-500'
+                        }>
+                          {booking.status}
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Bookings Tab */}
+          <TabsContent value="bookings" className="space-y-6">
+            <Card className="shadow-lg">
+              <CardHeader>
+                <CardTitle className="text-2xl">📅 All Bookings</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {bookings.length === 0 ? (
+                  <div className="text-center py-12">
+                    <span className="text-6xl mb-4 block">📅</span>
+                    <p className="text-xl text-slate-600">No bookings found</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {bookings.map((booking) => (
+                      <Card key={booking.id} className="border-2">
+                        <CardContent className="p-6">
+                          <div className="flex justify-between items-start">
+                            <div className="space-y-2">
+                              <h3 className="text-xl font-bold">{booking.surgery?.name || 'Surgery'}</h3>
+                              <p className="text-slate-600">🏥 {booking.hospital?.name || 'Hospital'}</p>
+                              <p className="text-slate-600">👨‍⚕️ Dr. {booking.doctor?.full_name || 'Doctor'}</p>
+                              <p className="text-slate-600">📅 {booking.surgery_date ? new Date(booking.surgery_date).toLocaleDateString() : 'Date TBD'}</p>
+                            </div>
+                            <Badge className={
+                              booking.status === 'confirmed' ? 'bg-green-500' :
+                              booking.status === 'pending' ? 'bg-yellow-500' :
+                              booking.status === 'completed' ? 'bg-blue-500' :
+                              'bg-slate-500'
+                            }>
+                              {booking.status}
+                            </Badge>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Profile Tab */}
+          <TabsContent value="profile" className="space-y-6">
+            <Card className="shadow-lg">
+              <CardHeader>
+                <CardTitle className="text-2xl">👤 Personal Information</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-slate-600">Full Name</Label>
+                    <p className="font-semibold">{patientProfile?.full_name || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <Label className="text-slate-600">Email</Label>
+                    <p className="font-semibold">{patientProfile?.email || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <Label className="text-slate-600">Phone</Label>
+                    <p className="font-semibold">{patientProfile?.phone || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <Label className="text-slate-600">Age</Label>
+                    <p className="font-semibold">{patientProfile?.age || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <Label className="text-slate-600">Gender</Label>
+                    <p className="font-semibold">{patientProfile?.gender || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <Label className="text-slate-600">Blood Group</Label>
+                    <p className="font-semibold">{patientProfile?.blood_group || 'N/A'}</p>
+                  </div>
+                </div>
+                <Separator />
+                <div>
+                  <Label className="text-slate-600">Address</Label>
+                  <p className="font-semibold">{patientProfile?.current_address || 'N/A'}</p>
+                </div>
+                <Separator />
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-slate-600">Emergency Contact</Label>
+                    <p className="font-semibold">{patientProfile?.emergency_contact_name || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <Label className="text-slate-600">Emergency Phone</Label>
+                    <p className="font-semibold">{patientProfile?.emergency_contact_phone || 'N/A'}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Documents Tab */}
+          <TabsContent value="documents" className="space-y-6">
+            <Card className="shadow-lg">
+              <CardHeader>
+                <CardTitle className="text-2xl">📋 Medical Documents</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-center py-12">
+                  <span className="text-6xl mb-4 block">📄</span>
+                  <p className="text-xl text-slate-600">Document management coming soon</p>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+      </div>
+    </div>
+  );
+};
+
+// Patient Booking Flow with Dashboard Layout
+const PatientBookingFlow = () => {
+  const { logout, user } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [patientProfile, setPatientProfile] = useState(null);
+  const [loading, setLoading] = useState(true);
+  
+  const [state, dispatch] = useReducer(bookingReducer, { 
+    currentStep: 1, // Start at step 1 (EssentialInfoCollector) since user is already registered
+    bookingData: {} 
+  });
+
+  useEffect(() => {
+    fetchPatientData();
+  }, []);
+
+  // Initialize booking data from location state if available
+  useEffect(() => {
+    if (location.state?.patientData) {
+      dispatch({ 
+        type: 'UPDATE_DATA', 
+        payload: {
+          patientId: user.id,
+          patientData: location.state.patientData
+        }
+      });
+    } else if (patientProfile) {
+      dispatch({ 
+        type: 'UPDATE_DATA', 
+        payload: {
+          patientId: user.id,
+          patientData: patientProfile
+        }
+      });
+    }
+  }, [location.state, patientProfile, user]);
+
+  const fetchPatientData = async () => {
+    try {
+      const profileResponse = await axios.get(`${API}/patients/by-user/${user.id}`);
+      setPatientProfile(profileResponse.data);
+    } catch (error) {
+      console.error('Failed to fetch patient data:', error);
+      toast.error('Failed to load your profile');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleNext = (data) => {
+    dispatch({
+      type: 'NEXT_STEP',
+      payload: data
+    });
+  };
+
+  const handleComplete = (data) => {
+    dispatch({
+      type: 'UPDATE_DATA',
+      payload: data
+    });
+    // Navigate back to dashboard after completion
+    toast.success('Booking completed successfully! 🎉');
+    navigate('/patient');
+  };
+
+  const handleBackToDashboard = () => {
+    navigate('/patient');
+  };
+
+  const renderCurrentStep = () => {
+    const { currentStep, bookingData } = state;
+    
+    switch (currentStep) {
+      case 1:
+        return <EssentialInfoCollector patientData={bookingData} onNext={handleNext} />;
+      case 2:
+        return <SurgerySelection patientData={bookingData} onNext={handleNext} />;
+      case 3:
+        return <SurgeonSelection patientData={bookingData} surgery={bookingData.surgery} onNext={handleNext} />;
+      case 4:
+        return (
+          <ImplantSelection
+            patientData={bookingData}
+            surgery={bookingData.surgery}
+            surgeon={bookingData.surgeon}
+            onNext={handleNext}
+          />
+        );
+      case 5:
+        return (
+          <HospitalSelection
+            patientData={bookingData}
+            surgery={bookingData.surgery}
+            surgeon={bookingData.surgeon}
+            implant={bookingData.implant}
+            onNext={handleNext}
+          />
+        );
+      case 6:
+        return (
+          <Checkout
+            patientData={bookingData}
+            surgery={bookingData.surgery}
+            surgeon={bookingData.surgeon}
+            implant={bookingData.implant}
+            hospital={bookingData.hospital}
+            onComplete={handleComplete}
+          />
+        );
+      default:
+        return <EssentialInfoCollector patientData={bookingData} onNext={handleNext} />;
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-cyan-50 via-teal-50 to-blue-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-600 mx-auto mb-4"></div>
+          <p className="text-cyan-700">Loading booking flow...</p>
+        </div>
+      </div>
+    );
+  }
+
+  const stepNames = ['', 'Health Check', 'Surgery', 'Surgeon', 'Implant', 'Hospital', 'Checkout'];
+  const currentStepName = stepNames[state.currentStep] || 'Booking';
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-cyan-50 via-teal-50 to-blue-50">
+      {/* Dashboard Header */}
+      <div className="bg-white shadow-sm border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-4 py-4">
+          <div className="flex justify-between items-center">
+            <div className="flex items-center space-x-4">
+              <Button
+                onClick={handleBackToDashboard}
+                variant="outline"
+                className="border-cyan-300 text-cyan-600 hover:bg-cyan-50"
+              >
+                <span className="mr-2">←</span>
+                Back to Dashboard
+              </Button>
+              <div className="border-l border-gray-300 pl-4">
+                <h1 className="text-2xl font-bold bg-gradient-to-r from-cyan-600 to-blue-600 bg-clip-text text-transparent">
+                  {currentStepName}
+                </h1>
+                <p className="text-sm text-slate-600">
+                  Step {state.currentStep} of 6
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center space-x-3">
+              <div className="text-right mr-3">
+                <p className="text-sm font-medium text-slate-700">
+                  {patientProfile?.full_name || 'Patient'}
+                </p>
+                <p className="text-xs text-slate-500">Signed in</p>
+              </div>
+              <Button onClick={logout} variant="outline" className="border-red-300 text-red-600 hover:bg-red-50">
+                <span className="mr-2">🚪</span>
+                Logout
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Progress Bar */}
+      <div className="bg-white border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-4 py-3">
+          <div className="flex items-center justify-between">
+            {[1, 2, 3, 4, 5, 6].map((step) => (
+              <div key={step} className="flex items-center flex-1">
+                <div className={`flex items-center justify-center w-8 h-8 rounded-full border-2 ${
+                  state.currentStep >= step 
+                    ? 'bg-cyan-600 border-cyan-600 text-white' 
+                    : 'bg-white border-gray-300 text-gray-400'
+                }`}>
+                  {state.currentStep > step ? '✓' : step}
+                </div>
+                {step < 6 && (
+                  <div className={`flex-1 h-1 mx-2 ${
+                    state.currentStep > step ? 'bg-cyan-600' : 'bg-gray-200'
+                  }`} />
+                )}
+              </div>
+            ))}
+          </div>
+          <div className="flex justify-between mt-2">
+            {stepNames.slice(1).map((name, idx) => (
+              <div key={idx} className="text-xs text-center" style={{width: '16.66%'}}>
+                {name}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="p-4">
+        {renderCurrentStep()}
+      </div>
+    </div>
+  );
+};
+
 // Doctor Dashboard Component (complete version)
 const DoctorDashboard = () => {
   const { logout, user } = useAuth();
@@ -6792,12 +7347,11 @@ const DoctorDashboard = () => {
 
   const fetchDoctorBookings = async () => {
     try {
-      // This endpoint would need to be implemented in backend
-      const response = await axios.get(`${API}/doctors/bookings`);
+      const response = await axios.get(`${API}/doctors/${user.id}/bookings`);
       setBookings(response.data);
     } catch (error) {
-      console.log('Bookings endpoint not yet implemented');
-      setBookings([]); // Mock data for now
+      console.log('Failed to fetch bookings:', error);
+      setBookings([]); // Empty array on error
     } finally {
       setLoading(false);
     }

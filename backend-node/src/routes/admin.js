@@ -5,6 +5,32 @@ const { authenticate } = require('../middleware/authenticate');
 const { authorize } = require('../middleware/authorize');
 const { hashPassword } = require('../utils/auth');
 
+// Get all users (Admin only)
+router.get('/users', authenticate, authorize('admin'), async (req, res) => {
+  try {
+    const users = await User.findAll({
+      attributes: ['id', 'email', 'role', 'is_active', 'email_verified', 'last_login', 'created_at', 'updated_at'],
+      order: [['created_at', 'DESC']]
+    });
+
+    const response = users.map(u => ({
+      id: u.id,
+      email: u.email,
+      role: u.role,
+      is_active: u.is_active,
+      email_verified: u.email_verified,
+      last_login: u.last_login,
+      created_at: u.created_at,
+      updated_at: u.updated_at
+    }));
+
+    return res.json(response);
+  } catch (error) {
+    console.error('Failed to fetch users:', error);
+    return res.status(500).json({ detail: 'Failed to fetch users: ' + error.message });
+  }
+});
+
 // Get all doctors (Admin only)
 router.get('/doctors', authenticate, authorize('admin'), async (req, res) => {
   try {
@@ -382,10 +408,22 @@ router.patch('/doctors/:doctor_id/approve', authenticate, authorize('admin'), as
       return res.status(404).json({ detail: 'Doctor not found' });
     }
 
+    // Update doctor status
     doctor.status = 'approved';
+    doctor.verification_status = 'verified';
     doctor.approved_at = new Date();
     doctor.approved_by = req.user.user_id;
     await doctor.save();
+
+    // Activate the user account in the users table
+    if (doctor.user_id) {
+      const user = await User.findByPk(doctor.user_id);
+      if (user) {
+        user.is_active = true;
+        user.email_verified = true;
+        await user.save();
+      }
+    }
 
     return res.json({ message: 'Doctor approved successfully', doctor });
   } catch (error) {

@@ -98,7 +98,7 @@ router.patch('/admin/:doctor_id/approve', authenticate, authorize('admin'), asyn
 
     doctor.status = 'approved';
     doctor.approved_at = new Date();
-    doctor.approved_by = req.user.user_id;
+    doctor.approved_by = req.user.id;
     await doctor.save();
 
     return res.json({ message: 'Doctor approved successfully' });
@@ -189,41 +189,7 @@ router.post('/upload/verification', upload.single('file'), async (req, res) => {
   }
 });
 
-// Get doctor by ID
-router.get('/:doctor_id', async (req, res) => {
-  const { doctor_id } = req.params;
-
-  try {
-    const doctor = await Doctor.findByPk(doctor_id, {
-      include: [{
-        model: DoctorSurgery,
-        as: 'doctorSurgeries',
-        include: [{
-          model: Surgery,
-          as: 'surgery'
-        }]
-      }]
-    });
-    
-    if (!doctor) {
-      return res.status(404).json({ detail: 'Doctor not found' });
-    }
-
-    const doctorData = doctor.toJSON();
-    doctorData.surgeries = doctor.doctorSurgeries ? doctor.doctorSurgeries.map(ds => ({
-      id: ds.surgery?.id,
-      name: ds.surgery?.name,
-      is_primary: ds.is_primary,
-      experience_years: ds.experience_years,
-      procedures_completed: ds.procedures_completed
-    })) : [];
-
-    return res.json(doctorData);
-  } catch (error) {
-    console.error('Get doctor error:', error);
-    return res.status(500).json({ detail: 'Failed to fetch doctor: ' + error.message });
-  }
-});
+// IMPORTANT: All specific routes with /:doctor_id/something must come BEFORE the generic /:doctor_id route
 
 // Get doctor's bookings
 router.get('/:doctor_id/bookings', authenticate, authorize('doctor', 'admin'), async (req, res) => {
@@ -231,7 +197,7 @@ router.get('/:doctor_id/bookings', authenticate, authorize('doctor', 'admin'), a
 
   try {
     // Check if user is the doctor or admin
-    if (req.user.role === 'doctor' && req.user.user_id !== doctor_id) {
+    if (req.user.role === 'doctor' && req.user.id !== doctor_id) {
       return res.status(403).json({ detail: 'Access denied' });
     }
 
@@ -259,7 +225,7 @@ router.get('/:doctor_id/schedule', authenticate, authorize('doctor', 'admin'), a
 
   try {
     // Check if user is the doctor or admin
-    if (req.user.role === 'doctor' && req.user.user_id !== doctor_id) {
+    if (req.user.role === 'doctor' && req.user.id !== doctor_id) {
       return res.status(403).json({ detail: 'Access denied' });
     }
 
@@ -298,7 +264,7 @@ router.put('/:doctor_id/availability', authenticate, authorize('doctor'), async 
 
   try {
     // Check if user is the doctor
-    if (req.user.user_id !== doctor_id) {
+    if (req.user.id !== doctor_id) {
       return res.status(403).json({ detail: 'Access denied' });
     }
 
@@ -335,7 +301,7 @@ router.get('/:doctor_id/patients', authenticate, authorize('doctor', 'admin'), a
 
   try {
     // Check if user is the doctor or admin
-    if (req.user.role === 'doctor' && req.user.user_id !== doctor_id) {
+    if (req.user.role === 'doctor' && req.user.id !== doctor_id) {
       return res.status(403).json({ detail: 'Access denied' });
     }
 
@@ -358,49 +324,14 @@ router.get('/:doctor_id/patients', authenticate, authorize('doctor', 'admin'), a
   }
 });
 
-// Update doctor profile
-router.put('/:doctor_id', authenticate, authorize('doctor'), async (req, res) => {
-  const { doctor_id } = req.params;
-  const updateData = req.body;
-
-  try {
-    // Check if user is the doctor
-    if (req.user.user_id !== doctor_id) {
-      return res.status(403).json({ detail: 'Access denied' });
-    }
-
-    const doctor = await Doctor.findByPk(doctor_id);
-    if (!doctor) {
-      return res.status(404).json({ detail: 'Doctor not found' });
-    }
-
-    // Remove fields that shouldn't be updated directly
-    delete updateData.id;
-    delete updateData.user_id;
-    delete updateData.status;
-    delete updateData.approved_at;
-    delete updateData.approved_by;
-
-    await doctor.update(updateData);
-
-    return res.json({
-      message: 'Doctor profile updated successfully',
-      doctor: doctor
-    });
-  } catch (error) {
-    console.error('Update doctor error:', error);
-    return res.status(500).json({ detail: 'Failed to update doctor: ' + error.message });
-  }
-});
-
-// Update doctor's surgery types
+// Update doctor's surgery types (must come before generic PUT /:doctor_id)
 router.put('/:doctor_id/surgeries', authenticate, authorize('doctor'), async (req, res) => {
   const { doctor_id } = req.params;
   const { surgery_types } = req.body;
 
   try {
     // Check if user is the doctor
-    if (req.user.user_id !== doctor_id) {
+    if (req.user.id !== doctor_id) {
       return res.status(403).json({ detail: 'Access denied' });
     }
 
@@ -466,6 +397,113 @@ router.get('/:doctor_id/surgeries', async (req, res) => {
   } catch (error) {
     console.error('Get doctor surgeries error:', error);
     return res.status(500).json({ detail: 'Failed to fetch surgeries: ' + error.message });
+  }
+});
+
+// Update doctor profile (generic PUT route - must come after all specific sub-routes)
+router.put('/:doctor_id', authenticate, authorize('doctor'), async (req, res) => {
+  const { doctor_id } = req.params;
+  const updateData = req.body;
+
+  try {
+    // Check if user is the doctor
+    if (req.user.id !== doctor_id) {
+      return res.status(403).json({ detail: 'Access denied' });
+    }
+
+    const doctor = await Doctor.findByPk(doctor_id);
+    if (!doctor) {
+      return res.status(404).json({ detail: 'Doctor not found' });
+    }
+
+    // Remove fields that shouldn't be updated directly
+    delete updateData.id;
+    delete updateData.user_id;
+    delete updateData.status;
+    delete updateData.approved_at;
+    delete updateData.approved_by;
+
+    await doctor.update(updateData);
+
+    return res.json({
+      message: 'Doctor profile updated successfully',
+      doctor: doctor
+    });
+  } catch (error) {
+    console.error('Update doctor error:', error);
+    return res.status(500).json({ detail: 'Failed to update doctor: ' + error.message });
+  }
+});
+
+// Get doctor profile by ID (specific route)
+router.get('/profile/:doctor_id', async (req, res) => {
+  const { doctor_id } = req.params;
+
+  try {
+    const doctor = await Doctor.findByPk(doctor_id, {
+      include: [{
+        model: DoctorSurgery,
+        as: 'doctorSurgeries',
+        include: [{
+          model: Surgery,
+          as: 'surgery'
+        }]
+      }]
+    });
+    
+    if (!doctor) {
+      return res.status(404).json({ detail: 'Doctor not found' });
+    }
+
+    const doctorData = doctor.toJSON();
+    doctorData.surgeries = doctor.doctorSurgeries ? doctor.doctorSurgeries.map(ds => ({
+      id: ds.surgery?.id,
+      name: ds.surgery?.name,
+      is_primary: ds.is_primary,
+      experience_years: ds.experience_years,
+      procedures_completed: ds.procedures_completed
+    })) : [];
+
+    return res.json(doctorData);
+  } catch (error) {
+    console.error('Get doctor profile error:', error);
+    return res.status(500).json({ detail: 'Failed to fetch doctor profile: ' + error.message });
+  }
+});
+
+// Get doctor by ID (generic GET route - must come LAST)
+router.get('/:doctor_id', async (req, res) => {
+  const { doctor_id } = req.params;
+
+  try {
+    const doctor = await Doctor.findByPk(doctor_id, {
+      include: [{
+        model: DoctorSurgery,
+        as: 'doctorSurgeries',
+        include: [{
+          model: Surgery,
+          as: 'surgery'
+        }]
+      }]
+    });
+    
+    if (!doctor) {
+      return res.status(404).json({ detail: 'Doctor not found' });
+    }
+
+    const doctorData = doctor.toJSON();
+    doctorData.surgeries = doctor.doctorSurgeries ? doctor.doctorSurgeries.map(ds => ({
+      id: ds.surgery?.id,
+      name: ds.surgery?.name,
+      is_primary: ds.is_primary,
+      experience_years: ds.experience_years,
+      procedures_completed: ds.procedures_completed
+    })) : [];
+
+    return res.json(doctorData);
+  } catch (error) {
+    console.error('Get doctor error:', error);
+    return res.status(500).json({ detail: 'Failed to fetch doctor: ' + error.message });
   }
 });
 

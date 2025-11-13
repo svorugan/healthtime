@@ -304,6 +304,40 @@ router.post('/complete-profile', async (req, res) => {
   }
 });
 
+// Get Patient by User ID
+router.get('/by-user/:user_id', authenticate, authorize('patient', 'doctor', 'admin'), async (req, res) => {
+  const { user_id } = req.params;
+
+  try {
+    // Check if user is accessing their own data
+    if (req.user.role === 'patient' && req.user.user_id !== user_id) {
+      return res.status(403).json({ detail: 'Access denied' });
+    }
+
+    const patient = await Patient.findOne({
+      where: { user_id: user_id },
+      include: [
+        { model: PatientMedicalHistory, as: 'medicalHistory' },
+        { model: PatientVitalSigns, as: 'vitalSigns' }
+      ]
+    });
+
+    if (!patient) {
+      return res.status(404).json({ detail: 'Patient not found' });
+    }
+
+    // Include user email from User model
+    const user = await User.findByPk(user_id);
+    const patientData = patient.toJSON();
+    patientData.email = user?.email;
+
+    return res.json(patientData);
+  } catch (error) {
+    console.error('Get patient by user_id error:', error);
+    return res.status(500).json({ detail: 'Failed to fetch patient: ' + error.message });
+  }
+});
+
 // Get Patient by ID
 router.get('/:patient_id', authenticate, authorize('patient', 'doctor', 'admin'), async (req, res) => {
   const { patient_id } = req.params;
