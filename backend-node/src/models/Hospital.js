@@ -93,6 +93,17 @@ const Hospital = sequelize.define('Hospital', {
   total_reviews: {
     type: DataTypes.INTEGER,
     defaultValue: 0
+  },
+  status: {
+    type: DataTypes.STRING(20),
+    defaultValue: 'pending',
+    allowNull: false
+  },
+  approved_at: {
+    type: DataTypes.DATE
+  },
+  approved_by: {
+    type: DataTypes.UUID
   }
 }, {
   tableName: 'hospitals',

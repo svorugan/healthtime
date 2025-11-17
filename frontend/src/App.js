@@ -18,6 +18,10 @@ import PatientProfileModal from './components/PatientProfileModal';
 // Import pages
 import ApiExplorer from './pages/ApiExplorer';
 
+// Import dashboard components
+import HospitalDashboard from './components/HospitalDashboard';
+import ImplantDashboard from './components/ImplantDashboard';
+
 // Enhanced Patient Wrapper Component
 const EnhancedPatientWrapper = () => {
   const navigate = useNavigate();
@@ -443,24 +447,46 @@ const AdminLoginPage = () => {
 const HospitalLoginPage = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [hospitalId, setHospitalId] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const { login } = useAuth();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!email || !password || !hospitalId) {
+    if (!email || !password) {
       toast.error('Please fill all required fields');
       return;
     }
 
     setLoading(true);
     try {
-      // Hospital login logic would go here
-      toast.success('Welcome to Hospital Portal! 🏥');
-      navigate('/hospital-dashboard');
+      // Use centralized login endpoint
+      const response = await axios.post(`${API}/auth/login`, {
+        email,
+        password
+      });
+
+      const { access_token, user_role, user_id, email: userEmail } = response.data;
+      
+      if (user_role === 'hospital') {
+        // Store token and login with user data
+        localStorage.setItem('token', access_token);
+        
+        // Call login function with user data and token
+        const userData = {
+          id: user_id,
+          email: userEmail,
+          role: user_role
+        };
+        login(userData, access_token);
+        
+        toast.success('Welcome to Hospital Portal! 🏥');
+        navigate('/hospital');
+      } else {
+        toast.error('This login is for hospital administrators only.');
+      }
     } catch (error) {
-      toast.error('Hospital login failed. Please check your credentials.');
+      toast.error(error.response?.data?.detail || 'Hospital login failed. Please check your credentials.');
     } finally {
       setLoading(false);
     }
@@ -479,18 +505,6 @@ const HospitalLoginPage = () => {
         </CardHeader>
         <CardContent className="p-8">
           <form onSubmit={handleSubmit} className="space-y-6">
-            <div>
-              <Label htmlFor="hospitalId">Hospital ID</Label>
-              <Input
-                id="hospitalId"
-                value={hospitalId}
-                onChange={(e) => setHospitalId(e.target.value)}
-                placeholder="HEAL-HOSP-001"
-                required
-                className="border-green-200 focus:border-green-500"
-              />
-            </div>
-            
             <div>
               <Label htmlFor="email">Admin Email</Label>
               <Input
@@ -552,24 +566,42 @@ const HospitalLoginPage = () => {
 const ImplantLoginPage = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [companyCode, setCompanyCode] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const { login } = useAuth();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!email || !password || !companyCode) {
+    if (!email || !password) {
       toast.error('Please fill all required fields');
       return;
     }
 
     setLoading(true);
     try {
-      // Implant manufacturer login logic would go here
-      toast.success('Welcome to Manufacturer Portal! 🦴');
-      navigate('/implant-dashboard');
+      // Use centralized login endpoint
+      const response = await axios.post(`${API}/auth/login`, {
+        email,
+        password
+      });
+
+      const { access_token, user_role, user_id } = response.data;
+      
+      if (user_role === 'implant') {
+        // Create user data object and login
+        const userData = { 
+          role: user_role, 
+          id: user_id,
+          email: email 
+        };
+        login(userData, access_token);
+        toast.success('Welcome to Manufacturer Portal! 🦴');
+        navigate('/implant');
+      } else {
+        toast.error('This login is for implant manufacturers only.');
+      }
     } catch (error) {
-      toast.error('Manufacturer login failed. Please check your credentials.');
+      toast.error(error.response?.data?.detail || 'Manufacturer login failed. Please check your credentials.');
     } finally {
       setLoading(false);
     }
@@ -588,18 +620,6 @@ const ImplantLoginPage = () => {
         </CardHeader>
         <CardContent className="p-8">
           <form onSubmit={handleSubmit} className="space-y-6">
-            <div>
-              <Label htmlFor="companyCode">Company Code</Label>
-              <Input
-                id="companyCode"
-                value={companyCode}
-                onChange={(e) => setCompanyCode(e.target.value)}
-                placeholder="ZIMMER-001"
-                required
-                className="border-orange-200 focus:border-orange-500"
-              />
-            </div>
-            
             <div>
               <Label htmlFor="email">Business Email</Label>
               <Input
@@ -788,6 +808,10 @@ const LoginPage = () => {
         navigate('/admin');
       } else if (user_role === 'doctor') {
         navigate('/doctor');
+      } else if (user_role === 'hospital') {
+        navigate('/hospital');
+      } else if (user_role === 'patient') {
+        navigate('/patient');
       } else {
         navigate('/');
       }
@@ -1347,7 +1371,7 @@ const AdminDashboard = () => {
       
       const [doctorsRes, hospitalsRes, implantsRes, patientsRes, bookingsRes] = await Promise.all([
         axios.get(`${API}/admin/doctors`, config).catch((err) => { console.error('Doctors fetch error:', err); return { data: [] }; }),
-        axios.get(`${API}/hospitals`).catch((err) => { console.error('Hospitals fetch error:', err); return { data: [] }; }),
+        axios.get(`${API}/admin/hospitals`, config).catch((err) => { console.error('Hospitals fetch error:', err); return { data: [] }; }),
         axios.get(`${API}/implants`).catch((err) => { console.error('Implants fetch error:', err); return { data: [] }; }),
         axios.get(`${API}/admin/patients`, config).catch((err) => { console.error('Patients fetch error:', err); return { data: [] }; }),
         axios.get(`${API}/admin/bookings`, config).catch((err) => { console.error('Bookings fetch error:', err); return { data: [] }; })
@@ -1425,6 +1449,82 @@ const AdminDashboard = () => {
       fetchAllData();
     } catch (error) {
       toast.error('Failed to delete hospital');
+    }
+  };
+
+  const approveHospital = async (hospitalId) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.patch(`${API}/admin/hospitals/${hospitalId}/approve`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      console.log('Approve response:', response.data);
+      
+      // Update local state immediately for better UX
+      setHospitals(prevHospitals => 
+        prevHospitals.map(h => 
+          h.id === hospitalId ? { ...h, status: 'approved', approved_at: new Date() } : h
+        )
+      );
+      
+      toast.success('Hospital approved successfully!');
+      // Refresh data from server to ensure consistency
+      await fetchAllData();
+    } catch (error) {
+      console.error('Approve hospital error:', error);
+      toast.error(error.response?.data?.detail || 'Failed to approve hospital');
+    }
+  };
+
+  const rejectHospital = async (hospitalId) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.patch(`${API}/admin/hospitals/${hospitalId}/reject`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      console.log('Reject response:', response.data);
+      
+      // Update local state immediately for better UX
+      setHospitals(prevHospitals => 
+        prevHospitals.map(h => 
+          h.id === hospitalId ? { ...h, status: 'rejected' } : h
+        )
+      );
+      
+      toast.success('Hospital rejected successfully!');
+      // Refresh data from server to ensure consistency
+      await fetchAllData();
+    } catch (error) {
+      console.error('Reject hospital error:', error);
+      toast.error(error.response?.data?.detail || 'Failed to reject hospital');
+    }
+  };
+
+  const approveImplant = async (implantId) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.patch(`${API}/admin/implants/${implantId}/approve`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      console.log('Approve implant response:', response.data);
+      
+      // Update local state immediately for better UX
+      setImplants(prevImplants => 
+        prevImplants.map(i => 
+          i.id === implantId ? { ...i, status: 'approved', approved_at: new Date() } : i
+        )
+      );
+
+      // If backend returned the updated implant, merge it into state to avoid re-fetching
+      const returned = response.data?.implant;
+      if (returned) {
+        setImplants(prevImplants => prevImplants.map(i => i.id === implantId ? { ...i, ...returned } : i));
+      }
+
+      toast.success('Implant approved successfully!');
+    } catch (error) {
+      console.error('Approve implant error:', error);
+      toast.error(error.response?.data?.detail || 'Failed to approve implant');
     }
   };
 
@@ -1910,8 +2010,19 @@ const AdminDashboard = () => {
                           <CardContent className="p-6">
                             <div className="flex justify-between items-start mb-4">
                               <div>
-                                <h3 className="font-bold text-lg">{hospital.name}</h3>
+                                <div className="flex items-center gap-2 mb-1">
+                                  <h3 className="font-bold text-lg">{hospital.name}</h3>
+                                  <Badge className={`${
+                                    hospital.status === 'approved' ? 'bg-green-500' :
+                                    hospital.status === 'rejected' ? 'bg-red-500' :
+                                    'bg-yellow-500'
+                                  }`}>
+                                    {hospital.status || 'pending'}
+                                  </Badge>
+                                </div>
                                 <p className="text-gray-600">{hospital.location}</p>
+                                <p className="text-sm text-gray-500">📧 {hospital.email}</p>
+                                <p className="text-sm text-gray-500">📞 {hospital.phone}</p>
                                 <Badge className={`mt-2 ${
                                   hospital.zone === 'Zone 1' ? 'bg-green-100 text-green-800' :
                                   hospital.zone === 'Zone 2' ? 'bg-blue-100 text-blue-800' :
@@ -1942,6 +2053,25 @@ const AdminDashboard = () => {
                             )}
                             
                             <div className="flex space-x-2 pt-3 border-t">
+                              {hospital.status === 'pending' && (
+                                <>
+                                  <Button 
+                                    onClick={() => approveHospital(hospital.id)} 
+                                    size="sm"
+                                    className="flex-1 bg-green-600 hover:bg-green-700"
+                                  >
+                                    ✅ Approve
+                                  </Button>
+                                  <Button 
+                                    onClick={() => rejectHospital(hospital.id)} 
+                                    variant="outline" 
+                                    size="sm"
+                                    className="flex-1 border-red-300 text-red-600 hover:bg-red-50"
+                                  >
+                                    ❌ Reject
+                                  </Button>
+                                </>
+                              )}
                               <Button 
                                 onClick={() => navigate(`/admin/hospital/${hospital.id}/edit`)} 
                                 variant="outline" 
@@ -1954,7 +2084,7 @@ const AdminDashboard = () => {
                                 onClick={() => deleteHospital(hospital.id)} 
                                 variant="outline" 
                                 size="sm"
-                                className="border-red-300 text-red-600 hover:bg-red-50"
+                                className="flex-1 border-gray-300 text-gray-700 hover:bg-gray-50"
                               >
                                 🗑️ Delete
                               </Button>
@@ -1968,12 +2098,12 @@ const AdminDashboard = () => {
               </Card>
             )}
 
-            {/* Implants Management */}
+            {/* Patients Management */}
             {activeTab === 'implants' && (
               <Card className="shadow-2xl border-0 bg-white/90 backdrop-blur-sm">
                 <CardHeader>
                   <CardTitle className="text-xl flex items-center justify-between">
-                    🦴 Implant Management
+                    🦴 Implant Catalog
                     <Button onClick={() => navigate('/admin/implant/new')} className="bg-purple-600 hover:bg-purple-700">
                       + Add New Implant
                     </Button>
@@ -1983,45 +2113,84 @@ const AdminDashboard = () => {
                   {implants.length === 0 ? (
                     <div className="text-center py-12 text-gray-500">
                       <span className="text-6xl mb-4 block">🦴</span>
-                      <h3 className="text-xl font-semibold mb-2">No Implants</h3>
-                      <p>Add implants to get started</p>
+                      <h3 className="text-xl font-semibold mb-2">No Implants Registered</h3>
+                      <p>Add implants to make them available for bookings</p>
                     </div>
                   ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                       {implants.map((implant) => (
-                        <Card key={implant.id} className="border border-gray-200 hover:shadow-lg transition-shadow">
-                          <CardContent className="p-6">
-                            <div className="flex justify-between items-start mb-3">
+                        <Card key={implant.id} className="border border-purple-100 hover:shadow-lg transition-shadow">
+                          <CardContent className="p-6 space-y-4">
+                            <div className="flex items-start justify-between">
                               <div>
-                                <h3 className="font-bold text-lg">{implant.name}</h3>
-                                <p className="text-sm text-gray-600">{implant.brand}</p>
+                                <h3 className="font-bold text-lg text-gray-900 flex items-center gap-2">
+                                  {implant.name || 'Unnamed Implant'}
+                                  <Badge className="bg-purple-100 text-purple-700">#{implant.id?.slice(0, 8)}</Badge>
+                                </h3>
+                                <p className="text-gray-600">Brand: {implant.brand || 'N/A'}</p>
+                                {implant.brand_type && <p className="text-sm text-gray-500">Type: {implant.brand_type}</p>}
                               </div>
                               <div className="text-right">
-                                <div className="text-lg font-bold text-teal-600">₹{implant.price?.toLocaleString()}</div>
-                                <div className="text-sm text-gray-500">{implant.expected_life || 'Lifetime'}</div>
+                                <p className="text-2xl font-semibold text-purple-600">₹{implant.price?.toLocaleString() || '—'}</p>
+                                <p className="text-xs text-gray-500">Per implant</p>
                               </div>
                             </div>
-                            
-                            <div className="space-y-2 text-sm mb-4">
-                              <div><strong>Material:</strong> {implant.material || 'N/A'}</div>
-                              <div><strong>Success Rate:</strong> {implant.success_rate || 'N/A'}%</div>
-                              <div><strong>Surgery Type:</strong> {implant.surgery_type || 'General'}</div>
+
+                            <div className="grid grid-cols-2 gap-3 text-sm text-gray-600">
+                              {implant.surgery_type && (
+                                <div>
+                                  <p className="text-gray-500">Surgery Type</p>
+                                  <p className="font-medium text-gray-800">{implant.surgery_type}</p>
+                                </div>
+                              )}
+                              {implant.expected_life && (
+                                <div>
+                                  <p className="text-gray-500">Expected Life</p>
+                                  <p className="font-medium text-gray-800">{implant.expected_life}</p>
+                                </div>
+                              )}
+                              {implant.range_of_motion && (
+                                <div>
+                                  <p className="text-gray-500">ROM</p>
+                                  <p className="font-medium text-gray-800">{implant.range_of_motion}</p>
+                                </div>
+                              )}
+                              {implant.success_rate && (
+                                <div>
+                                  <p className="text-gray-500">Success Rate</p>
+                                  <p className="font-medium text-gray-800">{implant.success_rate}%</p>
+                                </div>
+                              )}
                             </div>
-                            
+
+                            {implant.description && (
+                              <p className="text-sm text-gray-600 line-clamp-3">{implant.description}</p>
+                            )}
+
                             <div className="flex space-x-2 pt-3 border-t">
+                              {implant.status !== 'approved' && (
+                                <Button
+                                  onClick={() => approveImplant(implant.id)}
+                                  size="sm"
+                                  className="flex-1 bg-green-600 hover:bg-green-700"
+                                >
+                                  ✅ Approve
+                                </Button>
+                              )}
+
                               <Button 
                                 onClick={() => navigate(`/admin/implant/${implant.id}/edit`)} 
                                 variant="outline" 
                                 size="sm"
                                 className="flex-1"
                               >
-                                📝 Edit
+                                🛠️ Edit
                               </Button>
                               <Button 
                                 onClick={() => deleteImplant(implant.id)} 
                                 variant="outline" 
                                 size="sm"
-                                className="border-red-300 text-red-600 hover:bg-red-50"
+                                className="flex-1 border-red-300 text-red-600 hover:bg-red-50"
                               >
                                 🗑️ Delete
                               </Button>
@@ -2039,35 +2208,18 @@ const AdminDashboard = () => {
             {activeTab === 'patients' && (
               <Card className="shadow-2xl border-0 bg-white/90 backdrop-blur-sm">
                 <CardHeader>
-                  <div className="flex items-center justify-between mb-4">
-                    <CardTitle className="text-xl flex items-center">
-                      👥 All Patients
-                      <Badge className="ml-3 bg-green-100 text-green-800">
-                        {filteredPatients.length} of {patients.length}
-                      </Badge>
-                    </CardTitle>
-                    <Button onClick={() => navigate('/admin/patient/new')} className="bg-green-600 hover:bg-green-700">
+                  <CardTitle className="text-xl flex items-center justify-between">
+                    👥 Patient Directory
+                    <Button onClick={() => navigate('/admin/patient/new')} className="bg-blue-600 hover:bg-blue-700">
                       + Add New Patient
                     </Button>
-                  </div>
-                  <div className="relative">
-                    <input
-                      type="text"
-                      placeholder="Search by name, email, phone, or city..."
-                      value={patientSearchQuery}
-                      onChange={(e) => setPatientSearchQuery(e.target.value)}
-                      className="w-full px-4 py-2 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                    />
-                    <svg className="absolute left-3 top-3 h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                    </svg>
-                  </div>
+                  </CardTitle>
                 </CardHeader>
                 <CardContent>
                   {filteredPatients.length === 0 ? (
                     <div className="text-center py-12 text-gray-500">
-                      <span className="text-6xl mb-4 block">🔍</span>
-                      <h3 className="text-xl font-semibold mb-2">{patientSearchQuery ? 'No Matching Patients' : 'No Patients'}</h3>
+                      <span className="text-6xl mb-4 block">👥</span>
+                      <h3 className="text-xl font-semibold mb-2">No Patients Found</h3>
                       <p>{patientSearchQuery ? 'Try adjusting your search query' : 'Add patients to get started'}</p>
                     </div>
                   ) : (
@@ -6732,6 +6884,10 @@ function App() {
             <Route path="/register/doctor/enhanced" element={<EnhancedDoctorRegistration />} />
             <Route path="/register/patient/enhanced" element={<EnhancedPatientWrapper />} />
             <Route path="/register/admin" element={<AdminRegistration />} />
+            <Route path="/register/hospital" element={<HospitalRegistrationPublic />} />
+            <Route path="/hospital/register" element={<HospitalRegistrationPublic />} />
+            <Route path="/register/implant" element={<ImplantRegistrationPublic />} />
+            <Route path="/implant/register" element={<ImplantRegistrationPublic />} />
             
             {/* Complete Profile Routes */}
             <Route path="/profile/complete" element={<CompletePatientProfile />} />
@@ -6753,6 +6909,12 @@ function App() {
             
             {/* Doctor Routes */}
             <Route path="/doctor" element={<ProtectedRoute role="doctor"><DoctorDashboard /></ProtectedRoute>} />
+            
+            {/* Hospital Routes */}
+            <Route path="/hospital" element={<ProtectedRoute role="hospital"><HospitalDashboardWrapper /></ProtectedRoute>} />
+            
+            {/* Implant Routes */}
+            <Route path="/implant" element={<ProtectedRoute role="implant"><ImplantDashboardWrapper /></ProtectedRoute>} />
             
             {/* Admin Testing Dashboard */}
             <Route path="/testing-dashboard" element={<TestingDashboard />} />
@@ -6782,9 +6944,41 @@ const ProtectedRoute = ({ children, role }) => {
 
   useEffect(() => {
     if (!user) {
-      navigate('/login');
+      // Redirect to role-specific login page
+      switch (role) {
+        case 'admin':
+          navigate('/login/admin');
+          break;
+        case 'doctor':
+          navigate('/login/doctor');
+          break;
+        case 'hospital':
+          navigate('/login/hospital');
+          break;
+        case 'patient':
+          navigate('/login/patient');
+          break;
+        default:
+          navigate('/login');
+      }
     } else if (role && user.role !== role) {
-      navigate('/login');
+      // Redirect to appropriate login page if role doesn't match
+      switch (role) {
+        case 'admin':
+          navigate('/login/admin');
+          break;
+        case 'doctor':
+          navigate('/login/doctor');
+          break;
+        case 'hospital':
+          navigate('/login/hospital');
+          break;
+        case 'patient':
+          navigate('/login/patient');
+          break;
+        default:
+          navigate('/login');
+      }
     }
   }, [user, role, navigate]);
 
@@ -7781,6 +7975,603 @@ const DoctorProfileManagement = ({ doctorProfile, setDoctorProfile }) => {
           </div>
         </CardContent>
       </Card>
+    </div>
+  );
+};
+
+// Hospital Dashboard Wrapper
+const HospitalDashboardWrapper = () => {
+  const { logout, user } = useAuth();
+  return <HospitalDashboard user={user} logout={logout} />;
+};
+
+// Implant Dashboard Wrapper
+const ImplantDashboardWrapper = () => {
+  const { logout, user } = useAuth();
+  return <ImplantDashboard user={user} logout={logout} />;
+};
+
+// Public Hospital Registration Component
+const HospitalRegistrationPublic = () => {
+  const [formData, setFormData] = useState({
+    name: '',
+    location: '',
+    address: '',
+    zone: 'Zone 1',
+    latitude: '',
+    longitude: '',
+    facilities: [],
+    insurance_accepted: true,
+    base_price: '',
+    consumables_cost: '',
+    contact_phone: '',
+    contact_email: '',
+    admin_name: '',
+    admin_email: '',
+    admin_password: '',
+    description: ''
+  });
+  const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
+
+  const allFacilities = [
+    '24/7 Emergency', 'ICU', 'Advanced OR', 'Physiotherapy', 'Parking',
+    'Premium Rooms', 'AC Rooms', 'WiFi', 'Cafeteria', 'Pharmacy',
+    'Laboratory', 'Radiology', 'Blood Bank', 'Ambulance Service',
+    'Cardiac Care', 'Maternity Ward', 'Pediatric Care', 'Dialysis',
+    'Rehabilitation', 'Home Care Services'
+  ];
+
+  const handleFacilityToggle = (facility) => {
+    setFormData(prev => ({
+      ...prev,
+      facilities: prev.facilities.includes(facility)
+        ? prev.facilities.filter(f => f !== facility)
+        : [...prev.facilities, facility]
+    }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!formData.name || !formData.location || !formData.address || !formData.base_price || !formData.admin_email || !formData.admin_password) {
+      toast.error('Please fill all required fields');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // Map frontend form data to backend API expectations
+      const submitData = {
+        // Backend required fields
+        email: formData.admin_email,
+        password: formData.admin_password,
+        full_name: formData.admin_name,
+        name: formData.name,
+        phone: formData.contact_phone,
+        address: formData.address,
+        
+        // Hospital specific fields
+        zone: formData.zone,
+        location: formData.location,
+        latitude: parseFloat(formData.latitude || 0),
+        longitude: parseFloat(formData.longitude || 0),
+        facilities: formData.facilities || [],
+        insurance_accepted: formData.insurance_accepted,
+        base_price: parseInt(formData.base_price),
+        consumables_cost: parseInt(formData.consumables_cost || 0),
+        contact_email: formData.contact_email,
+        description: formData.description,
+        
+        // Additional fields that might be useful
+        city: formData.location, // Use location as city
+        state: formData.zone, // Use zone as state
+        emergency_services: true,
+        ambulance_service: true
+      };
+
+      await axios.post(`${API}/auth/register/hospital`, submitData);
+      toast.success('Hospital registration submitted! Please check your email for verification.');
+      navigate('/login/hospital');
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Registration failed. Please try again.');
+      console.error('Hospital registration error:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 p-4">
+      <div className="max-w-5xl mx-auto">
+        <div className="text-center mb-8">
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-2">
+            Register Your Hospital
+          </h1>
+          <p className="text-lg text-slate-600">Join healthtime and connect with patients</p>
+        </div>
+
+        <Card className="shadow-2xl border-0 bg-white/90 backdrop-blur-sm">
+          <CardHeader className="bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-t-lg">
+            <CardTitle className="text-2xl text-center">Hospital Registration</CardTitle>
+          </CardHeader>
+          <CardContent className="p-8">
+            <form onSubmit={handleSubmit} className="space-y-6">
+              
+              {/* Admin Account */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-gray-800 border-b pb-2">👤 Admin Account</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <Label htmlFor="admin_name">Admin Name *</Label>
+                    <Input
+                      id="admin_name"
+                      value={formData.admin_name}
+                      onChange={(e) => setFormData({...formData, admin_name: e.target.value})}
+                      placeholder="Full name"
+                      required
+                      className="border-blue-200 focus:border-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="admin_email">Admin Email *</Label>
+                    <Input
+                      id="admin_email"
+                      type="email"
+                      value={formData.admin_email}
+                      onChange={(e) => setFormData({...formData, admin_email: e.target.value})}
+                      placeholder="admin@hospital.com"
+                      required
+                      className="border-blue-200 focus:border-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="admin_password">Password *</Label>
+                    <Input
+                      id="admin_password"
+                      type="password"
+                      value={formData.admin_password}
+                      onChange={(e) => setFormData({...formData, admin_password: e.target.value})}
+                      placeholder="Strong password"
+                      required
+                      className="border-blue-200 focus:border-blue-500"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Hospital Information */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-gray-800 border-b pb-2">🏥 Hospital Information</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="name">Hospital Name *</Label>
+                    <Input
+                      id="name"
+                      value={formData.name}
+                      onChange={(e) => setFormData({...formData, name: e.target.value})}
+                      placeholder="e.g., Apollo Hospital"
+                      required
+                      className="border-blue-200 focus:border-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="location">Location/Area *</Label>
+                    <Input
+                      id="location"
+                      value={formData.location}
+                      onChange={(e) => setFormData({...formData, location: e.target.value})}
+                      placeholder="e.g., Banjara Hills"
+                      required
+                      className="border-blue-200 focus:border-blue-500"
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <Label htmlFor="address">Full Address *</Label>
+                    <Textarea
+                      id="address"
+                      value={formData.address}
+                      onChange={(e) => setFormData({...formData, address: e.target.value})}
+                      placeholder="Complete address with pin code"
+                      required
+                      className="border-blue-200 focus:border-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="contact_phone">Contact Phone *</Label>
+                    <Input
+                      id="contact_phone"
+                      value={formData.contact_phone}
+                      onChange={(e) => setFormData({...formData, contact_phone: e.target.value})}
+                      placeholder="Hospital phone number"
+                      required
+                      className="border-blue-200 focus:border-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="contact_email">Contact Email</Label>
+                    <Input
+                      id="contact_email"
+                      type="email"
+                      value={formData.contact_email}
+                      onChange={(e) => setFormData({...formData, contact_email: e.target.value})}
+                      placeholder="info@hospital.com"
+                      className="border-blue-200 focus:border-blue-500"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Zone & Pricing */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-gray-800 border-b pb-2">💰 Zone & Pricing</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <Label htmlFor="zone">Care Zone *</Label>
+                    <Select value={formData.zone} onValueChange={(value) => setFormData({...formData, zone: value})}>
+                      <SelectTrigger className="border-blue-200 focus:border-blue-500">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Zone 1">Zone 1 - Premium Care</SelectItem>
+                        <SelectItem value="Zone 2">Zone 2 - Comfort Care</SelectItem>
+                        <SelectItem value="Zone 3">Zone 3 - Essential Care</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label htmlFor="base_price">Base Price (₹) *</Label>
+                    <Input
+                      id="base_price"
+                      type="number"
+                      value={formData.base_price}
+                      onChange={(e) => setFormData({...formData, base_price: e.target.value})}
+                      placeholder="e.g., 45000"
+                      required
+                      className="border-blue-200 focus:border-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="consumables_cost">Consumables Cost (₹)</Label>
+                    <Input
+                      id="consumables_cost"
+                      type="number"
+                      value={formData.consumables_cost}
+                      onChange={(e) => setFormData({...formData, consumables_cost: e.target.value})}
+                      placeholder="e.g., 15000"
+                      className="border-blue-200 focus:border-blue-500"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Facilities */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-gray-800 border-b pb-2">🏨 Facilities</h3>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                  {allFacilities.map(facility => (
+                    <div key={facility} className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        id={facility}
+                        checked={formData.facilities.includes(facility)}
+                        onChange={() => handleFacilityToggle(facility)}
+                        className="rounded border-blue-300"
+                      />
+                      <label htmlFor={facility} className="text-sm cursor-pointer">{facility}</label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Insurance */}
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  id="insurance_accepted"
+                  checked={formData.insurance_accepted}
+                  onChange={(e) => setFormData({...formData, insurance_accepted: e.target.checked})}
+                  className="rounded border-blue-300"
+                />
+                <label htmlFor="insurance_accepted" className="text-sm font-medium">We accept insurance</label>
+              </div>
+
+              <Button
+                type="submit"
+                disabled={loading}
+                className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-lg py-6"
+              >
+                {loading ? 'Registering...' : '🏥 Register Hospital'}
+              </Button>
+
+              <p className="text-center text-sm text-slate-600">
+                Already have an account?{' '}
+                <Link to="/login/hospital" className="text-blue-600 hover:underline font-semibold">
+                  Login here
+                </Link>
+              </p>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+};
+
+// Public Implant Registration Component
+const ImplantRegistrationPublic = () => {
+  const [formData, setFormData] = useState({
+    name: '',
+    brand: '',
+    brand_type: 'Premium',
+    expected_life: '',
+    range_of_motion: '',
+    peer_reviewed_studies: '',
+    price: '',
+    description: '',
+    surgery_type: '',
+    admin_name: '',
+    admin_email: '',
+    admin_password: '',
+    company_name: '',
+    contact_phone: ''
+  });
+  const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!formData.name || !formData.brand || !formData.price || !formData.admin_email || !formData.admin_password) {
+      toast.error('Please fill all required fields');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // Map frontend form data to backend API expectations
+      const submitData = {
+        // Backend required fields
+        email: formData.admin_email,
+        password: formData.admin_password,
+        full_name: formData.admin_name,
+        name: formData.name,
+        brand: formData.brand,
+        price: parseInt(formData.price),
+        
+        // Implant specific fields
+        brand_type: formData.brand_type,
+        surgery_type: formData.surgery_type,
+        expected_life: formData.expected_life,
+        range_of_motion: formData.range_of_motion,
+        peer_reviewed_studies: parseInt(formData.peer_reviewed_studies || 0),
+        description: formData.description,
+        
+        // Company information
+        manufacturer: formData.company_name,
+        phone: formData.contact_phone
+      };
+
+      await axios.post(`${API}/auth/register/implant`, submitData);
+      toast.success('Implant registration submitted! Please check your email for verification.');
+      navigate('/login/implant');
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Registration failed. Please try again.');
+      console.error('Implant registration error:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-rose-50 p-4">
+      <div className="max-w-5xl mx-auto">
+        <div className="text-center mb-8">
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent mb-2">
+            Register Your Implant
+          </h1>
+          <p className="text-lg text-slate-600">Join healthtime and showcase your medical implants</p>
+        </div>
+
+        <Card className="shadow-2xl border-0 bg-white/90 backdrop-blur-sm">
+          <CardHeader className="bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-t-lg">
+            <CardTitle className="text-2xl text-center">Implant Registration</CardTitle>
+          </CardHeader>
+          <CardContent className="p-8">
+            <form onSubmit={handleSubmit} className="space-y-6">
+              
+              {/* Admin Account */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-gray-800 border-b pb-2">👤 Admin Account</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <Label htmlFor="admin_name">Admin Name *</Label>
+                    <Input
+                      id="admin_name"
+                      value={formData.admin_name}
+                      onChange={(e) => setFormData({...formData, admin_name: e.target.value})}
+                      placeholder="Full name"
+                      required
+                      className="border-purple-200 focus:border-purple-500"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="admin_email">Admin Email *</Label>
+                    <Input
+                      id="admin_email"
+                      type="email"
+                      value={formData.admin_email}
+                      onChange={(e) => setFormData({...formData, admin_email: e.target.value})}
+                      placeholder="admin@company.com"
+                      required
+                      className="border-purple-200 focus:border-purple-500"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="admin_password">Password *</Label>
+                    <Input
+                      id="admin_password"
+                      type="password"
+                      value={formData.admin_password}
+                      onChange={(e) => setFormData({...formData, admin_password: e.target.value})}
+                      placeholder="Strong password"
+                      required
+                      className="border-purple-200 focus:border-purple-500"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Company Information */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-gray-800 border-b pb-2">🏢 Company Information</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="company_name">Company Name *</Label>
+                    <Input
+                      id="company_name"
+                      value={formData.company_name}
+                      onChange={(e) => setFormData({...formData, company_name: e.target.value})}
+                      placeholder="e.g., Zimmer Biomet"
+                      required
+                      className="border-purple-200 focus:border-purple-500"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="contact_phone">Contact Phone *</Label>
+                    <Input
+                      id="contact_phone"
+                      value={formData.contact_phone}
+                      onChange={(e) => setFormData({...formData, contact_phone: e.target.value})}
+                      placeholder="Company phone number"
+                      required
+                      className="border-purple-200 focus:border-purple-500"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Implant Information */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-gray-800 border-b pb-2">🦴 Implant Information</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="name">Implant Name *</Label>
+                    <Input
+                      id="name"
+                      value={formData.name}
+                      onChange={(e) => setFormData({...formData, name: e.target.value})}
+                      placeholder="e.g., Persona Knee System"
+                      required
+                      className="border-purple-200 focus:border-purple-500"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="brand">Brand *</Label>
+                    <Input
+                      id="brand"
+                      value={formData.brand}
+                      onChange={(e) => setFormData({...formData, brand: e.target.value})}
+                      placeholder="e.g., Zimmer"
+                      required
+                      className="border-purple-200 focus:border-purple-500"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="brand_type">Brand Type *</Label>
+                    <Select value={formData.brand_type} onValueChange={(value) => setFormData({...formData, brand_type: value})}>
+                      <SelectTrigger className="border-purple-200 focus:border-purple-500">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Premium">Premium</SelectItem>
+                        <SelectItem value="Standard">Standard</SelectItem>
+                        <SelectItem value="Economy">Economy</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label htmlFor="surgery_type">Surgery Type *</Label>
+                    <Input
+                      id="surgery_type"
+                      value={formData.surgery_type}
+                      onChange={(e) => setFormData({...formData, surgery_type: e.target.value})}
+                      placeholder="e.g., Knee Replacement"
+                      required
+                      className="border-purple-200 focus:border-purple-500"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="price">Price (₹) *</Label>
+                    <Input
+                      id="price"
+                      type="number"
+                      value={formData.price}
+                      onChange={(e) => setFormData({...formData, price: e.target.value})}
+                      placeholder="e.g., 250000"
+                      required
+                      className="border-purple-200 focus:border-purple-500"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="expected_life">Expected Life</Label>
+                    <Input
+                      id="expected_life"
+                      value={formData.expected_life}
+                      onChange={(e) => setFormData({...formData, expected_life: e.target.value})}
+                      placeholder="e.g., 15-20 years"
+                      className="border-purple-200 focus:border-purple-500"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="range_of_motion">Range of Motion</Label>
+                    <Input
+                      id="range_of_motion"
+                      value={formData.range_of_motion}
+                      onChange={(e) => setFormData({...formData, range_of_motion: e.target.value})}
+                      placeholder="e.g., 0-135 degrees"
+                      className="border-purple-200 focus:border-purple-500"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="peer_reviewed_studies">Peer Reviewed Studies</Label>
+                    <Input
+                      id="peer_reviewed_studies"
+                      value={formData.peer_reviewed_studies}
+                      onChange={(e) => setFormData({...formData, peer_reviewed_studies: e.target.value})}
+                      placeholder="Number of studies"
+                      className="border-purple-200 focus:border-purple-500"
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <Label htmlFor="description">Description</Label>
+                    <Textarea
+                      id="description"
+                      value={formData.description}
+                      onChange={(e) => setFormData({...formData, description: e.target.value})}
+                      placeholder="Detailed description of the implant..."
+                      className="border-purple-200 focus:border-purple-500"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <Button
+                type="submit"
+                disabled={loading}
+                className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-lg py-6"
+              >
+                {loading ? 'Registering...' : '🦴 Register Implant'}
+              </Button>
+
+              <p className="text-center text-sm text-slate-600">
+                Already have an account?{' '}
+                <Link to="/login/implant" className="text-purple-600 hover:underline font-semibold">
+                  Login here
+                </Link>
+              </p>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 };

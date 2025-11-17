@@ -20,6 +20,30 @@ const upload = multer({
   }
 });
 
+// Get current hospital user's hospital information
+router.get('/my-hospital', authenticate, authorize('hospital'), async (req, res) => {
+  try {
+    const hospitalUser = await HospitalUser.findOne({
+      where: { user_id: req.user.id },
+      include: [
+        {
+          model: Hospital,
+          as: 'hospital'
+        }
+      ]
+    });
+
+    if (!hospitalUser || !hospitalUser.hospital) {
+      return res.status(404).json({ detail: 'Hospital not found for this user' });
+    }
+
+    return res.json(hospitalUser.hospital);
+  } catch (error) {
+    console.error('Get my hospital error:', error);
+    return res.status(500).json({ detail: 'Failed to fetch hospital: ' + error.message });
+  }
+});
+
 // Get all hospitals
 router.get('/', async (req, res) => {
   try {
@@ -85,7 +109,7 @@ router.put('/:hospital_id', authenticate, authorize('hospital', 'admin'), async 
     if (req.user.role === 'hospital') {
       // Would need to check if user belongs to this hospital via HospitalUser
       const hospitalUser = await HospitalUser.findOne({
-        where: { user_id: req.user.user_id, hospital_id: hospital_id }
+        where: { user_id: req.user.id, hospital_id: hospital_id }
       });
       if (!hospitalUser) {
         return res.status(403).json({ detail: 'Access denied' });
@@ -121,7 +145,7 @@ router.get('/:hospital_id/bookings', authenticate, authorize('hospital', 'admin'
     // Check if user has access to this hospital
     if (req.user.role === 'hospital') {
       const hospitalUser = await HospitalUser.findOne({
-        where: { user_id: req.user.user_id, hospital_id: hospital_id }
+        where: { user_id: req.user.id, hospital_id: hospital_id }
       });
       if (!hospitalUser) {
         return res.status(403).json({ detail: 'Access denied' });
@@ -153,7 +177,7 @@ router.get('/:hospital_id/staff', authenticate, authorize('hospital', 'admin'), 
     // Check if user has access to this hospital
     if (req.user.role === 'hospital') {
       const hospitalUser = await HospitalUser.findOne({
-        where: { user_id: req.user.user_id, hospital_id: hospital_id }
+        where: { user_id: req.user.id, hospital_id: hospital_id }
       });
       if (!hospitalUser) {
         return res.status(403).json({ detail: 'Access denied' });
@@ -180,7 +204,7 @@ router.post('/:hospital_id/staff', authenticate, authorize('hospital', 'admin'),
     // Check if user has access to this hospital
     if (req.user.role === 'hospital') {
       const hospitalUser = await HospitalUser.findOne({
-        where: { user_id: req.user.user_id, hospital_id: hospital_id, is_primary_admin: true }
+        where: { user_id: req.user.id, hospital_id: hospital_id, is_primary_admin: true }
       });
       if (!hospitalUser) {
         return res.status(403).json({ detail: 'Only primary admin can add staff' });
@@ -237,7 +261,7 @@ router.get('/:hospital_id/analytics', authenticate, authorize('hospital', 'admin
     // Check if user has access to this hospital
     if (req.user.role === 'hospital') {
       const hospitalUser = await HospitalUser.findOne({
-        where: { user_id: req.user.user_id, hospital_id: hospital_id }
+        where: { user_id: req.user.id, hospital_id: hospital_id }
       });
       if (!hospitalUser) {
         return res.status(403).json({ detail: 'Access denied' });
@@ -284,7 +308,7 @@ router.post('/upload/hospital-document', upload.single('file'), authenticate, au
     // Check access
     if (req.user.role === 'hospital') {
       const hospitalUser = await HospitalUser.findOne({
-        where: { user_id: req.user.user_id, hospital_id: hospital_id }
+        where: { user_id: req.user.id, hospital_id: hospital_id }
       });
       if (!hospitalUser) {
         return res.status(403).json({ detail: 'Access denied' });

@@ -51,6 +51,46 @@ router.get('/', async (req, res) => {
   }
 });
 
+// Get implants owned by the authenticated user (implant admin only)
+// Get implants owned by the authenticated user (implant admin only)
+router.get('/my/implants', authenticate, authorize('implant', 'admin'), async (req, res) => {
+  try {
+    if (req.user.role === 'admin') {
+      // Admin can see all implants
+      const implants = await Implant.findAll({
+        order: [['created_at', 'DESC']]
+      });
+      return res.json(implants);
+    }
+
+    // For implant users, get only their implants
+    // Get user ID from either user_id or id property
+    const userId = req.user.user_id || req.user.id;
+    
+    if (!userId) {
+      return res.status(400).json({ detail: 'User ID not found in session' });
+    }
+
+    const implantUsers = await ImplantUser.findAll({
+      where: { user_id: userId },
+      include: [{
+        model: Implant,
+        as: 'implant'
+      }]
+    });
+
+    const implants = implantUsers.map(iu => iu.implant).filter(implant => implant !== null);
+    
+    return res.json(implants);
+  } catch (error) {
+    console.error('Get my implants error:', error);
+    return res.status(500).json({ 
+      detail: 'Failed to fetch your implants: ' + error.message,
+      error: error.errors?.map(e => e.message) || error
+    });
+  }
+});
+
 // Get implant by ID
 router.get('/:implant_id', async (req, res) => {
   const { implant_id } = req.params;
@@ -65,6 +105,44 @@ router.get('/:implant_id', async (req, res) => {
   } catch (error) {
     console.error('Get implant error:', error);
     return res.status(500).json({ detail: 'Failed to fetch implant: ' + error.message });
+  }
+});
+
+// Create implant (implant admin only)
+router.post('/', authenticate, authorize('implant', 'admin'), async (req, res) => {
+  const implantData = req.body;
+
+  try {
+   // Create the implant
+const implant = await Implant.create(implantData);
+
+// If the user is an implant admin (not system admin), link them to the implant
+if (req.user.role === 'implant') {
+  // Make sure we have a valid user ID
+  if (!req.user.user_id && !req.user.id) {
+    throw new Error('Invalid user information in session');
+  }
+  
+  const userId = req.user.user_id || req.user.id;
+  
+  await ImplantUser.create({
+    user_id: userId,
+    implant_id: implant.id,
+    full_name: req.user.full_name || 'Implant Admin',
+    email: req.user.email || 'admin@implant.com',
+    designation: 'Admin',
+    is_primary_admin: true
+  });
+}
+
+    return res.status(201).json({
+      message: 'Implant created successfully',
+      id: implant.id,
+      implant: implant
+    });
+  } catch (error) {
+    console.error('Implant creation error:', error);
+    return res.status(400).json({ detail: error.message });
   }
 });
 

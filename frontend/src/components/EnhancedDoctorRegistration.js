@@ -204,94 +204,172 @@ const EnhancedDoctorRegistration = () => {
     setLoading(true);
     
     try {
-      // Validate required fields
-      const requiredFields = ['full_name', 'email', 'password', 'phone', 'primary_specialization',
-                             'medical_council_number', 'medical_degree', 'medical_degree_institution',
-                             'medical_degree_year', 'total_experience_years', 'city', 'state'];
+      console.log('Starting form submission...');
       
-      for (const field of requiredFields) {
-        if (!formData[field]) {
-          const fieldName = field.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-          // Inform the user via toast and stop submission. Try to focus the missing field for convenience.
-          toast.error(`Missing required field: ${fieldName}. Please go back and fill this field.`);
-          try {
-            const el = document.getElementById(field);
-            if (el && typeof el.focus === 'function') {
-              el.focus();
-              if (typeof el.scrollIntoView === 'function') el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }
-          } catch (e) {
-            // ignore focus errors in non-browser environments
-          }
-          setLoading(false);
-          return;
-        }
+      // Validate required fields with better error messages
+      const requiredFields = [
+        { field: 'full_name', label: 'Full Name' },
+        { field: 'email', label: 'Email' },
+        { field: 'password', label: 'Password' },
+        { field: 'phone', label: 'Phone Number' },
+        { field: 'primary_specialization', label: 'Primary Specialization' },
+        { field: 'medical_council_number', label: 'Medical Council Number' },
+        { field: 'medical_degree', label: 'Medical Degree' },
+        { field: 'medical_degree_institution', label: 'Medical Institution' },
+        { field: 'medical_degree_year', label: 'Year of Medical Degree' },
+        { field: 'total_experience_years', label: 'Total Experience Years' },
+        { field: 'city', label: 'City' },
+        { field: 'state', label: 'State' }
+      ];
+
+      // Check for missing required fields
+      const missingFields = requiredFields
+        .filter(({ field }) => !formData[field]?.toString().trim())
+        .map(({ label }) => label);
+
+      if (missingFields.length > 0) {
+        const message = `Please fill in all required fields: ${missingFields.join(', ')}`;
+        console.log('Validation failed - missing fields:', missingFields);
+        toast.error(message);
+        setLoading(false);
+        return;
       }
 
-      // Safely convert string numbers to integers/floats and trim text fields to avoid NaN being sent to backend
-      const safeInt = (v, defaultVal = undefined) => {
-        if (v === null || v === undefined || v === '') return defaultVal;
-        const n = parseInt(v);
-        return Number.isNaN(n) ? defaultVal : n;
-      };
+      // Validate email format
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(formData.email)) {
+        console.log('Validation failed - invalid email format:', formData.email);
+        toast.error('Please enter a valid email address');
+        setLoading(false);
+        return;
+      }
 
-      const safeFloat = (v, defaultVal = undefined) => {
-        if (v === null || v === undefined || v === '') return defaultVal;
-        const n = parseFloat(v);
-        return Number.isNaN(n) ? defaultVal : n;
-      };
+      // Validate password length
+      if (formData.password.length < 6) {
+        console.log('Validation failed - password too short');
+        toast.error('Password must be at least 6 characters long');
+        setLoading(false);
+        return;
+      }
 
-      const safeDate = (v) => {
-        if (!v) return undefined;
-        // Accept ISO date strings (from <input type="date">) or Date objects
-        const d = new Date(v);
-        if (isNaN(d.getTime())) return undefined;
-        // Return ISO date (YYYY-MM-DD) which Postgres accepts for DATE columns
-        return d.toISOString().slice(0, 10);
-      };
-
-      const normalizeLanguages = (val) => {
-        if (!val) return undefined;
-        if (Array.isArray(val)) return val;
-        if (typeof val === 'string') {
-          const trimmed = val.trim();
-          if (!trimmed) return undefined;
-          // split comma-separated
-          return trimmed.split(',').map(s => s.trim()).filter(Boolean);
-        }
-        return undefined;
+      // Prepare data for submission with proper type conversion
+      const cleanValue = (value) => {
+        if (value === '' || value === undefined || value === null) return null;
+        if (typeof value === 'string') return value.trim();
+        return value;
       };
 
       const submitData = {
         ...formData,
-        full_name: formData.full_name ? formData.full_name.trim() : formData.full_name,
-        date_of_birth: safeDate(formData.date_of_birth),
-        medical_degree_year: safeInt(formData.medical_degree_year),
-        medical_degree_percentage: safeFloat(formData.medical_degree_percentage),
-        postgraduate_year: safeInt(formData.postgraduate_year),
-        postgraduate_percentage: safeFloat(formData.postgraduate_percentage),
-        experience_years: safeInt(formData.experience_years, 0),
-        total_experience_years: safeInt(formData.total_experience_years),
-        consultation_fee: safeFloat(formData.consultation_fee, 0),
-        online_consultation_fee: safeFloat(formData.online_consultation_fee),
-        surgery_fee: safeFloat(formData.surgery_fee, 0),
-        emergency_consultation_fee: safeFloat(formData.emergency_consultation_fee),
-        total_surgeries_performed: safeInt(formData.total_surgeries_performed, 0),
-        continuing_education_points: safeInt(formData.continuing_education_points, 0)
+        // Clean and trim string fields
+        full_name: cleanValue(formData.full_name),
+        email: cleanValue(formData.email),
+        phone: cleanValue(formData.phone),
+        alternate_phone: cleanValue(formData.alternate_phone),
+        primary_specialization: cleanValue(formData.primary_specialization),
+        medical_council_number: cleanValue(formData.medical_council_number),
+        medical_degree: cleanValue(formData.medical_degree),
+        medical_degree_institution: cleanValue(formData.medical_degree_institution),
+        city: cleanValue(formData.city),
+        state: cleanValue(formData.state),
+        
+        // Convert string numbers to numbers
+        medical_degree_year: formData.medical_degree_year ? parseInt(formData.medical_degree_year, 10) : null,
+        total_experience_years: formData.total_experience_years ? parseInt(formData.total_experience_years, 10) : null,
+        consultation_fee: formData.consultation_fee ? Number(formData.consultation_fee) : null,
+        online_consultation_fee: formData.online_consultation_fee ? Number(formData.online_consultation_fee) : null,
+        surgery_fee: formData.surgery_fee ? Number(formData.surgery_fee) : null,
+        emergency_consultation_fee: formData.emergency_consultation_fee ? Number(formData.emergency_consultation_fee) : null,
+        
+        // Ensure arrays are always arrays (not null/undefined)
+        consultation_languages: Array.isArray(formData.consultation_languages) && formData.consultation_languages.length > 0 
+          ? formData.consultation_languages 
+          : ['English'],
+        
+        // Convert empty strings to null for optional fields
+        ...(formData.date_of_birth ? { date_of_birth: formData.date_of_birth } : { date_of_birth: null }),
+        ...(formData.gender ? { gender: formData.gender } : { gender: null }),
+        ...(formData.languages_spoken ? { languages_spoken: formData.languages_spoken } : { languages_spoken: null }),
+        ...(formData.bio ? { bio: formData.bio } : { bio: null })
       };
-
-      // Normalize languages to array for JSONB column
-      if (submitData.languages_spoken) {
-        submitData.languages_spoken = normalizeLanguages(submitData.languages_spoken);
-      }
-
-      const response = await axios.post(`${API}/auth/register/doctor/enhanced`, submitData);
       
-      toast.success(`Registration submitted! Profile ${response.data.profile_completeness}% complete. Awaiting admin approval.`);
-      navigate('/login-portal');
+      console.log('Processed submitData:', JSON.stringify(submitData, null, 2));
+
+      console.log('Submitting data to server:', JSON.stringify(submitData, null, 2));
+
+      // Make the API request with better error handling
+      const response = await axios.post(
+        `${API}/auth/register/doctor/enhanced`,
+        submitData,
+        {
+          validateStatus: (status) => status < 500, // Don't throw for 4xx errors
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      console.log('Server response:', {
+        status: response.status,
+        data: response.data,
+        headers: response.headers
+      });
+
+      if (response.status === 201) {
+        console.log('Registration successful');
+        toast.success('Registration submitted successfully! Awaiting admin approval.');
+        navigate('/login-portal');
+      } else {
+        // Handle server-side validation errors
+        let errorMessage = 'Registration failed. Please check your information.';
+        
+        if (response.data) {
+          console.log('Error response data:', response.data);
+          
+          if (response.data.detail) {
+            errorMessage = response.data.detail;
+          } else if (response.data.errors) {
+            errorMessage = Object.entries(response.data.errors)
+              .map(([field, errors]) => 
+                `${field.replace(/_/g, ' ')}: ${Array.isArray(errors) ? errors.join(', ') : errors}`
+              )
+              .join('. ');
+          }
+        }
+        
+        console.error('Registration failed:', errorMessage);
+        toast.error(errorMessage);
+      }
     } catch (error) {
-      toast.error(error.response?.data?.detail || 'Registration failed. Please try again.');
-      console.error('Registration error:', error);
+      console.error('Error during registration:', error);
+      
+      let errorMessage = 'An error occurred during registration. Please try again.';
+      
+      if (error.response) {
+        // Server responded with an error status
+        console.error('Error response data:', error.response.data);
+        console.error('Error status:', error.response.status);
+        
+        const { data } = error.response;
+        if (data?.detail) {
+          errorMessage = data.detail;
+        } else if (data?.errors) {
+          errorMessage = Object.entries(data.errors)
+            .map(([field, errors]) => 
+              `${field.replace(/_/g, ' ')}: ${Array.isArray(errors) ? errors.join(', ') : errors}`
+            )
+            .join('. ');
+        }
+      } else if (error.request) {
+        // Request was made but no response received
+        console.error('No response received:', error.request);
+        errorMessage = 'Unable to connect to the server. Please check your internet connection.';
+      } else {
+        // Something else happened in setting up the request
+        console.error('Request setup error:', error.message);
+      }
+      
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }

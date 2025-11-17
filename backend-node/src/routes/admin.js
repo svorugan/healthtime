@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { Patient, Booking, Hospital, Implant, Doctor, User } = require('../models');
+const { Patient, Booking, Hospital, Implant, Doctor, User, ImplantUser } = require('../models');
 const { authenticate } = require('../middleware/authenticate');
 const { authorize } = require('../middleware/authorize');
 const { hashPassword } = require('../utils/auth');
@@ -297,7 +297,7 @@ router.post('/doctors', authenticate, authorize('admin'), async (req, res) => {
       status: 'approved', // Auto-approve when created by admin
       verification_status: 'approved',
       approved_at: new Date(),
-      approved_by: req.user.user_id
+      approved_by: req.user.id
     });
 
     return res.status(201).json({
@@ -327,6 +327,110 @@ router.get('/bookings', authenticate, authorize('admin'), async (req, res) => {
   } catch (error) {
     console.error('Failed to fetch bookings:', error);
     return res.json([]);
+  }
+});
+
+// Get all hospitals (Admin only)
+router.get('/hospitals', authenticate, authorize('admin'), async (req, res) => {
+  try {
+    const hospitals = await Hospital.findAll({
+      order: [['created_at', 'DESC']]
+    });
+    
+    const response = hospitals.map(h => ({
+      id: h.id,
+      name: h.name,
+      email: h.email,
+      phone: h.phone,
+      zone: h.zone,
+      location: h.location,
+      address: h.address,
+      city: h.city,
+      state: h.state,
+      pincode: h.pincode,
+      status: h.status || 'pending',
+      insurance_accepted: h.insurance_accepted,
+      base_price: h.base_price,
+      consumables_cost: h.consumables_cost,
+      created_at: h.created_at
+    }));
+    
+    return res.json(response);
+  } catch (error) {
+    console.error('Failed to fetch hospitals:', error);
+    return res.json([]);
+  }
+});
+
+// Approve hospital (Admin only)
+router.patch('/hospitals/:hospital_id/approve', authenticate, authorize('admin'), async (req, res) => {
+  const { hospital_id } = req.params;
+
+  try {
+    const hospital = await Hospital.findByPk(hospital_id);
+    if (!hospital) {
+      return res.status(404).json({ detail: 'Hospital not found' });
+    }
+
+    // Update hospital status
+    hospital.status = 'approved';
+    hospital.approved_at = new Date();
+    hospital.approved_by = req.user.user_id;
+    await hospital.save();
+
+    // Activate the user account in the users table
+    const { HospitalUser, User } = require('../models');
+    const hospitalUser = await HospitalUser.findOne({
+      where: { hospital_id: hospital_id }
+    });
+    
+    if (hospitalUser && hospitalUser.user_id) {
+      const user = await User.findByPk(hospitalUser.user_id);
+      if (user) {
+        user.is_active = true;
+        user.email_verified = true;
+        await user.save();
+      }
+    }
+
+    return res.json({ 
+      message: 'Hospital approved successfully', 
+      hospital: {
+        ...hospital.toJSON(),
+        status: hospital.status,
+        approved_at: hospital.approved_at,
+        approved_by: hospital.approved_by
+      }
+    });
+  } catch (error) {
+    console.error('Approve hospital error:', error);
+    return res.status(500).json({ detail: 'Failed to approve hospital: ' + error.message });
+  }
+});
+
+// Reject hospital (Admin only)
+router.patch('/hospitals/:hospital_id/reject', authenticate, authorize('admin'), async (req, res) => {
+  const { hospital_id } = req.params;
+
+  try {
+    const hospital = await Hospital.findByPk(hospital_id);
+    if (!hospital) {
+      return res.status(404).json({ detail: 'Hospital not found' });
+    }
+
+    hospital.status = 'rejected';
+    await hospital.save();
+
+    return res.json({ 
+      message: 'Hospital rejected successfully', 
+      hospital: {
+        ...hospital.toJSON(),
+        status: hospital.status
+      }
+    });
+  } catch (error) {
+    console.error('Reject hospital error:', error);
+    return res.status(500).json({ detail: 'Failed to reject hospital: ' + error.message });
   }
 });
 
@@ -377,6 +481,63 @@ router.post('/implants', authenticate, authorize('admin'), async (req, res) => {
   } catch (error) {
     console.error('Implant creation error:', error);
     return res.status(400).json({ detail: error.message });
+  }
+});
+
+// Approve implant manufacturer (Admin only)
+router.patch('/implants/:implant_id/approve', authenticate, authorize('admin'), async (req, res) => {
+  const { implant_id } = req.params;
+
+  try {
+    const implant = await Implant.findByPk(implant_id);
+    if (!implant) {
+      return res.status(404).json({ detail: 'Implant not found' });
+    }
+
+    // Find primary implant user linked to this implant
+    const implantUser = await ImplantUser.findOne({
+      where: { implant_id: implant_id, is_primary_admin: true }
+    });
+
+    if (!implantUser) {
+      return res.status(404).json({ detail: 'Implant admin user not found for this implant' });
+    }
+
+    // Activate the linked user account
+    const user = await User.findByPk(implantUser.user_id);
+    if (!user) {
+      return res.status(404).json({ detail: 'User account for implant admin not found' });
+    }
+
+    user.is_active = true;
+    user.email_verified = true;
+    await user.save();
+
+    // Mark implant as approved in the database so UI stays consistent
+    implant.status = 'approved';
+    implant.approved_at = new Date();
+    implant.approved_by = req.user.user_id;
+    await implant.save();
+
+    // Mirror the hospital response shape: include toJSON spread and explicit approval fields
+    return res.json({
+      message: 'Implant manufacturer approved successfully',
+      implant: {
+        ... (implant.toJSON ? implant.toJSON() : implant),
+        status: implant.status,
+        approved_at: implant.approved_at,
+        approved_by: implant.approved_by
+      },
+      implant_admin_user: {
+        id: user.id,
+        email: user.email,
+        is_active: user.is_active,
+        email_verified: user.email_verified
+      }
+    });
+  } catch (error) {
+    console.error('Approve implant error:', error);
+    return res.status(500).json({ detail: 'Failed to approve implant manufacturer: ' + error.message });
   }
 });
 

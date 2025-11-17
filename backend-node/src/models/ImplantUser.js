@@ -10,7 +10,6 @@ const ImplantUser = sequelize.define('ImplantUser', {
   user_id: {
     type: DataTypes.UUID,
     allowNull: false,
-    unique: true,
     references: {
       model: 'users',
       key: 'id'
@@ -48,7 +47,13 @@ const ImplantUser = sequelize.define('ImplantUser', {
   timestamps: true,
   createdAt: 'created_at',
   updatedAt: 'updated_at',
-  underscored: false
+  underscored: false,
+  indexes: [
+    {
+      unique: true,
+      fields: ['user_id', 'implant_id']
+    }
+  ]
 });
 
 module.exports = ImplantUser;

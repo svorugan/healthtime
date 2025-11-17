@@ -1,0 +1,42 @@
+const { PORT, NODE_ENV, CORS_ORIGINS } = require('../config/app');
+
+const logServerInfo = () => {
+  console.log('='.repeat(50));
+  console.log('🚀 healthtime API Server Started');
+  console.log('='.repeat(50));
+  console.log(`📍 Server running on: http://localhost:${PORT}`);
+  console.log(`📍 Network access: http://<YOUR_IP>:${PORT}`);
+  console.log(`🌐 Environment: ${NODE_ENV}`);
+  console.log(`📊 Database: PostgreSQL`);
+  console.log(`🔐 CORS Origins: ${CORS_ORIGINS}`);
+  console.log('='.repeat(50));
+  console.log('\n📋 Available endpoints:');
+  console.log('  - GET    /api');
+  console.log('  - POST   /api/auth/login');
+  console.log('  - POST   /api/auth/register/admin');
+  console.log('  - POST   /api/auth/register/doctor');
+  console.log('  - POST   /api/auth/register/doctor/enhanced');
+  console.log('  - POST   /api/patients');
+  console.log('  - POST   /api/patients/enhanced');
+  console.log('  - POST   /api/upload/insurance');
+  console.log('  - POST   /api/upload/medical-document');
+  console.log('  - POST   /api/upload/doctor-verification');
+  console.log('  - GET    /api/surgeries');
+  console.log('  - GET    /api/surgeons');
+  console.log('  - GET    /api/implants');
+  console.log('  - GET    /api/hospitals');
+  console.log('  - POST   /api/bookings');
+  console.log('  - GET    /api/bookings/:booking_id');
+  console.log('  - GET    /api/admin/doctors/pending');
+  console.log('  - PATCH  /api/admin/doctors/:doctor_id/approve');
+  console.log('  - PATCH  /api/admin/doctors/:doctor_id/reject');
+  console.log('  - GET    /api/admin/patients');
+  console.log('  - GET    /api/admin/bookings');
+  console.log('  - POST   /api/admin/hospitals');
+  console.log('  - DELETE /api/admin/hospitals/:hospital_id');
+  console.log('  - POST   /api/admin/implants');
+  console.log('  - DELETE /api/admin/implants/:implant_id');
+  console.log('\n✅ Server is ready to accept requests!\n');
+};
+
+module.exports = { logServerInfo };
