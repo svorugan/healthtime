@@ -42,7 +42,7 @@ DROP FUNCTION IF EXISTS update_updated_at_column();
 DROP FUNCTION IF EXISTS cleanup_expired_otps();
 
 -- Now recreate all tables by running the complete schema
-\i complete_schema_v2.sql
+\i sql/complete_schema_v2.sql
 
 -- Verify deployment
 SELECT 'HealthTime Database Deployment Completed Successfully!' as status;

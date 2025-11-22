@@ -28,7 +28,7 @@ DROP TABLE IF EXISTS hospital_users CASCADE;
 DROP TABLE IF EXISTS implants CASCADE;
 DROP TABLE IF EXISTS hospitals CASCADE;
 DROP TABLE IF EXISTS surgeries CASCADE;
-DROP TABLE IF EXISTS admin_users CASCADE;
+-- DROP TABLE IF EXISTS admin_users CASCADE; -- removed - using unified users table
 DROP TABLE IF EXISTS doctors CASCADE;
 DROP TABLE IF EXISTS patients CASCADE;
 DROP TABLE IF EXISTS users CASCADE;
@@ -60,6 +60,18 @@ CREATE TABLE users (
     failed_login_attempts INTEGER DEFAULT 0,
     account_locked_until TIMESTAMP,
     
+    -- GDPR Compliance Fields
+    deleted_at TIMESTAMP,
+    deletion_reason VARCHAR(100),
+    gdpr_deletion_requested_at TIMESTAMP,
+    data_retention_until TIMESTAMP,
+    
+    -- Consent Management
+    consent_marketing BOOLEAN DEFAULT false,
+    consent_analytics BOOLEAN DEFAULT true,
+    consent_updated_at TIMESTAMP,
+    full_name VARCHAR(255), -- Added for admin users (no separate admin_users table)
+    
     -- Timestamps
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -68,6 +80,9 @@ CREATE TABLE users (
 -- Create indexes for users table
 CREATE INDEX idx_users_email ON users(email);
 CREATE INDEX idx_users_auth_provider_id ON users(auth_provider_id) WHERE auth_provider_id IS NOT NULL;
+CREATE INDEX idx_users_deleted_at ON users(deleted_at) WHERE deleted_at IS NOT NULL;
+CREATE INDEX idx_users_gdpr_deletion ON users(gdpr_deletion_requested_at) WHERE gdpr_deletion_requested_at IS NOT NULL;
+CREATE INDEX idx_users_retention ON users(data_retention_until) WHERE data_retention_until IS NOT NULL;
 
 -- 2. Create patients table
 CREATE TABLE patients (
@@ -248,17 +263,7 @@ CREATE INDEX idx_doctors_user_id ON doctors(user_id);
 CREATE INDEX idx_doctors_specialization ON doctors(primary_specialization);
 CREATE INDEX idx_doctors_verification ON doctors(verification_status);
 
--- 4. Create admin_users table
-CREATE TABLE admin_users (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id UUID REFERENCES users(id),
-    email VARCHAR(255) NOT NULL UNIQUE,
-    full_name VARCHAR(255) NOT NULL,
-    role VARCHAR(50) DEFAULT 'admin',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- 5. Create surgeries table
+-- 4. Create surgeries table
 CREATE TABLE surgeries (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name VARCHAR(255) NOT NULL,
