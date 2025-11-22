@@ -8033,8 +8033,25 @@ const HospitalRegistrationPublic = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.name || !formData.location || !formData.address || !formData.base_price || !formData.admin_email || !formData.admin_password) {
-      toast.error('Please fill all required fields');
+    
+    // Validate required fields
+    const requiredFields = {
+      'Hospital Name': formData.name,
+      'Location': formData.location,
+      'Address': formData.address,
+      'Base Price': formData.base_price,
+      'Admin Email': formData.admin_email,
+      'Admin Password': formData.admin_password,
+      'Contact Phone': formData.contact_phone,
+      'Admin Name': formData.admin_name
+    };
+
+    const missingFields = Object.entries(requiredFields)
+      .filter(([_, value]) => !value)
+      .map(([field]) => field);
+
+    if (missingFields.length > 0) {
+      toast.error(`Please fill in all required fields: ${missingFields.join(', ')}`);
       return;
     }
 
@@ -8050,31 +8067,65 @@ const HospitalRegistrationPublic = () => {
         phone: formData.contact_phone,
         address: formData.address,
         
-        // Hospital specific fields
-        zone: formData.zone,
-        location: formData.location,
-        latitude: parseFloat(formData.latitude || 0),
-        longitude: parseFloat(formData.longitude || 0),
-        facilities: formData.facilities || [],
-        insurance_accepted: formData.insurance_accepted,
-        base_price: parseInt(formData.base_price),
-        consumables_cost: parseInt(formData.consumables_cost || 0),
-        contact_email: formData.contact_email,
-        description: formData.description,
+        // Required for hospital registration
+        designation: 'Hospital Admin', // Default value since not in form
+        department: 'Administration',  // Default value since not in form
         
-        // Additional fields that might be useful
-        city: formData.location, // Use location as city
-        state: formData.zone, // Use zone as state
+        // Hospital specific fields
+        zone: formData.zone || 'Zone 1',
+        location: formData.location,
+        latitude: parseFloat(formData.latitude) || 0,
+        longitude: parseFloat(formData.longitude) || 0,
+        facilities: Array.isArray(formData.facilities) ? formData.facilities : [],
+        insurance_accepted: !!formData.insurance_accepted,
+        base_price: parseInt(formData.base_price) || 0,
+        consumables_cost: parseInt(formData.consumables_cost) || 0,
+        contact_email: formData.contact_email || formData.admin_email,
+        description: formData.description || `${formData.name} - ${formData.location}`,
+        
+        // Additional required fields
+        city: formData.location.split(',')[0]?.trim() || formData.location, // Get first part of location as city
+        state: formData.zone.replace('Zone ', 'State '), // Convert Zone to State
         emergency_services: true,
-        ambulance_service: true
+        ambulance_service: true,
+        total_beds: 100, // Default value
+        icu_beds: 10,   // Default value
+        operation_theaters: 5, // Default value
+        website: formData.contact_email ? `https://${formData.contact_email.split('@')[1]}` : '',
+        pincode: '500001' // Default pincode
       };
 
-      await axios.post(`${API}/auth/register/hospital`, submitData);
-      toast.success('Hospital registration submitted! Please check your email for verification.');
-      navigate('/login/hospital');
+      console.log('Submitting hospital registration:', JSON.stringify(submitData, null, 2));
+
+      const response = await axios.post(
+        `${API}/auth/register/hospital`, 
+        submitData,
+        {
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          validateStatus: (status) => status < 500 // Don't throw for 4xx errors
+        }
+      );
+      
+      console.log('Registration response:', response.data);
+      
+      if (response.status === 201) {
+        toast.success('Hospital registration submitted! Please wait for admin approval.');
+        navigate('/login/hospital');
+      } else {
+        const errorMessage = response.data?.detail || 
+                           response.data?.message || 
+                           'Registration failed. Please check your details and try again.';
+        throw new Error(errorMessage);
+      }
     } catch (error) {
-      toast.error(error.response?.data?.detail || 'Registration failed. Please try again.');
       console.error('Hospital registration error:', error);
+      const errorMessage = error.response?.data?.detail || 
+                         error.response?.data?.message || 
+                         error.message || 
+                         'Registration failed. Please try again.';
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
