@@ -14,6 +14,19 @@ const PatientMedicalHistory = require('./PatientMedicalHistory');
 const PatientVitalSigns = require('./PatientVitalSigns');
 const Notification = require('./Notification');
 
+// New models for complete schema v2
+const HospitalAvailability = require('./HospitalAvailability');
+const DoctorAvailability = require('./DoctorAvailability');
+const PatientTestimonial = require('./PatientTestimonial');
+const Review = require('./Review');
+const ServiceTile = require('./ServiceTile');
+const FeaturedContent = require('./FeaturedContent');
+const FeatureConfiguration = require('./FeatureConfiguration');
+const OtpLog = require('./OtpLog');
+const CommissionAgreement = require('./CommissionAgreement');
+const CommissionTransaction = require('./CommissionTransaction');
+const LandingPageAnalytics = require('./LandingPageAnalytics');
+
 // Define relationships between User and profile tables
 User.hasOne(Patient, { foreignKey: 'user_id', as: 'patientProfile' });
 Patient.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
@@ -82,6 +95,53 @@ DoctorSurgery.belongsTo(Surgery, { foreignKey: 'surgery_id', as: 'surgery' });
 User.hasMany(Notification, { foreignKey: 'user_id', as: 'notifications' });
 Notification.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
 
+// Hospital Availability relationships
+Hospital.hasMany(HospitalAvailability, { foreignKey: 'hospital_id', as: 'availability' });
+HospitalAvailability.belongsTo(Hospital, { foreignKey: 'hospital_id', as: 'hospital' });
+
+// Doctor Availability relationships
+Doctor.hasMany(DoctorAvailability, { foreignKey: 'doctor_id', as: 'availability' });
+DoctorAvailability.belongsTo(Doctor, { foreignKey: 'doctor_id', as: 'doctor' });
+
+// Patient Testimonial relationships
+Doctor.hasMany(PatientTestimonial, { foreignKey: 'doctor_id', as: 'testimonials' });
+PatientTestimonial.belongsTo(Doctor, { foreignKey: 'doctor_id', as: 'doctor' });
+
+Patient.hasMany(PatientTestimonial, { foreignKey: 'patient_id', as: 'testimonials' });
+PatientTestimonial.belongsTo(Patient, { foreignKey: 'patient_id', as: 'patient' });
+
+Hospital.hasMany(PatientTestimonial, { foreignKey: 'hospital_id', as: 'testimonials' });
+PatientTestimonial.belongsTo(Hospital, { foreignKey: 'hospital_id', as: 'hospital' });
+
+Booking.hasMany(PatientTestimonial, { foreignKey: 'booking_id', as: 'testimonials' });
+PatientTestimonial.belongsTo(Booking, { foreignKey: 'booking_id', as: 'booking' });
+
+// Review relationships
+User.hasMany(Review, { foreignKey: 'reviewer_id', as: 'reviewsGiven' });
+Review.belongsTo(User, { foreignKey: 'reviewer_id', as: 'reviewer' });
+
+Booking.hasMany(Review, { foreignKey: 'booking_id', as: 'reviews' });
+Review.belongsTo(Booking, { foreignKey: 'booking_id', as: 'booking' });
+
+// Commission Agreement relationships
+User.hasMany(CommissionAgreement, { foreignKey: 'approved_by', as: 'approvedAgreements' });
+CommissionAgreement.belongsTo(User, { foreignKey: 'approved_by', as: 'approver' });
+
+// Commission Transaction relationships
+CommissionAgreement.hasMany(CommissionTransaction, { foreignKey: 'commission_agreement_id', as: 'transactions' });
+CommissionTransaction.belongsTo(CommissionAgreement, { foreignKey: 'commission_agreement_id', as: 'agreement' });
+
+Booking.hasMany(CommissionTransaction, { foreignKey: 'booking_id', as: 'commissionTransactions' });
+CommissionTransaction.belongsTo(Booking, { foreignKey: 'booking_id', as: 'booking' });
+
+// OTP Log relationships
+User.hasMany(OtpLog, { foreignKey: 'user_id', as: 'otpLogs' });
+OtpLog.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
+
+// Landing Page Analytics relationships
+User.hasMany(LandingPageAnalytics, { foreignKey: 'user_id', as: 'analyticsData' });
+LandingPageAnalytics.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
+
 module.exports = {
   sequelize,
   User,
@@ -97,5 +157,17 @@ module.exports = {
   Booking,
   PatientMedicalHistory,
   PatientVitalSigns,
-  Notification
+  Notification,
+  // New models for complete schema v2
+  HospitalAvailability,
+  DoctorAvailability,
+  PatientTestimonial,
+  Review,
+  ServiceTile,
+  FeaturedContent,
+  FeatureConfiguration,
+  OtpLog,
+  CommissionAgreement,
+  CommissionTransaction,
+  LandingPageAnalytics
 };

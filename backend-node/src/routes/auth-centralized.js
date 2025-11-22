@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { body, validationResult } = require('express-validator');
-const { User, Patient, Doctor, AdminUser, Hospital, HospitalUser, Implant, ImplantUser, Surgery, DoctorSurgery } = require('../models');
+const { User, Patient, Doctor, Hospital, HospitalUser, Implant, ImplantUser, Surgery, DoctorSurgery } = require('../models');
 const { hashPassword, verifyPassword, createAccessToken } = require('../utils/auth');
 const { calculatePatientProfileCompleteness, calculateDoctorProfileCompleteness } = require('../utils/helpers');
 
@@ -106,34 +106,25 @@ router.post('/register/admin', [
     // Hash password
     const hashedPassword = await hashPassword(password);
 
-    // Create user and admin profile in a transaction
-    const result = await User.sequelize.transaction(async (t) => {
-      // Create user
-      const user = await User.create({
-        email,
-        password: hashedPassword,
-        role: 'admin',
-        is_active: true,
-        email_verified: true
-      }, { transaction: t });
-
-      // Create admin profile
-      const adminProfile = await AdminUser.create({
-        id: user.id,
-        user_id: user.id,
-        email,
-        password: hashedPassword,
-        full_name,
-        role: 'admin'
-      }, { transaction: t });
-
-      return { user, adminProfile };
+    // Create admin user (no separate admin_users table needed)
+    const user = await User.create({
+      email,
+      password: hashedPassword,
+      role: 'admin',
+      is_active: true,
+      email_verified: true,
+      full_name // Add full_name to the users table if needed
     });
 
     return res.status(201).json({
       message: 'Admin registered successfully',
-      user_id: result.user.id,
-      admin_id: result.adminProfile.id
+      user_id: user.id,
+      user: {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        full_name: user.full_name
+      }
     });
   } catch (error) {
     console.error('Admin registration error:', error);

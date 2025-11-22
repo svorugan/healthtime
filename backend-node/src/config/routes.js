@@ -11,6 +11,19 @@ const notificationRoutes = require('../routes/notifications');
 const uploadRoutes = require('../routes/uploads');
 const apiDocsRoutes = require('../routes/api-docs');
 
+// New routes for complete schema v2
+const hospitalAvailabilityRoutes = require('../routes/hospital-availability');
+const doctorAvailabilityRoutes = require('../routes/doctor-availability');
+const reviewRoutes = require('../routes/reviews');
+const testimonialRoutes = require('../routes/testimonials');
+const serviceTileRoutes = require('../routes/service-tiles');
+const featuredContentRoutes = require('../routes/featured-content');
+const featureConfigurationRoutes = require('../routes/feature-configurations');
+const otpLogRoutes = require('../routes/otp-logs');
+const commissionAgreementRoutes = require('../routes/commission-agreements');
+const commissionTransactionRoutes = require('../routes/commission-transactions');
+const landingPageAnalyticsRoutes = require('../routes/landing-page-analytics');
+
 const setupRoutes = (app) => {
   // Root endpoint
   app.get('/api', (req, res) => {
@@ -33,6 +46,19 @@ const setupRoutes = (app) => {
   app.use('/api/notifications', notificationRoutes);
   app.use('/api/upload', uploadRoutes);
   app.use('/api/docs', apiDocsRoutes);
+
+  // New routes for complete schema v2
+  app.use('/api/hospital-availability', hospitalAvailabilityRoutes);
+  app.use('/api/doctor-availability', doctorAvailabilityRoutes);
+  app.use('/api/reviews', reviewRoutes);
+  app.use('/api/testimonials', testimonialRoutes);
+  app.use('/api/service-tiles', serviceTileRoutes);
+  app.use('/api/featured-content', featuredContentRoutes);
+  app.use('/api/feature-configurations', featureConfigurationRoutes);
+  app.use('/api/otp-logs', otpLogRoutes);
+  app.use('/api/commission-agreements', commissionAgreementRoutes);
+  app.use('/api/commission-transactions', commissionTransactionRoutes);
+  app.use('/api/landing-page-analytics', landingPageAnalyticsRoutes);
 };
 
 module.exports = { setupRoutes };

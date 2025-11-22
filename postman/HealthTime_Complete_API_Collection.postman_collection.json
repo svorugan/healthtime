@@ -1,0 +1,829 @@
+{
+  "info": {
+    "name": "HealthTime Complete API Collection v2.0",
+    "description": "Comprehensive API collection for HealthTime Complete Schema v2.0 with marketplace functionality",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "version": "2.0.0"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{auth_token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:3000/api",
+      "type": "string"
+    },
+    {
+      "key": "auth_token",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Admin Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@healthtime.com\",\n  \"password\": \"admin123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "login"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    if (response.token) {",
+                  "        pm.collectionVariables.set('auth_token', response.token);",
+                  "        console.log('Auth token saved:', response.token);",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Profile",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/auth/profile",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "profile"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Hospital Availability",
+      "item": [
+        {
+          "name": "Get All Hospital Availability",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/hospital-availability?page=1&limit=10",
+              "host": ["{{base_url}}"],
+              "path": ["hospital-availability"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Search Nearby Hospital Facilities",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/hospital-availability/search/nearby?latitude=12.9716&longitude=77.5946&radius=25&facility_type=operation_theater",
+              "host": ["{{base_url}}"],
+              "path": ["hospital-availability", "search", "nearby"],
+              "query": [
+                {
+                  "key": "latitude",
+                  "value": "12.9716"
+                },
+                {
+                  "key": "longitude",
+                  "value": "77.5946"
+                },
+                {
+                  "key": "radius",
+                  "value": "25"
+                },
+                {
+                  "key": "facility_type",
+                  "value": "operation_theater"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Hospital Availability",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"hospital_id\": \"123e4567-e89b-12d3-a456-426614174000\",\n  \"facility_type\": \"operation_theater\",\n  \"facility_name\": \"OT-1\",\n  \"specialization_supported\": [\"orthopedic\", \"general\"],\n  \"equipment_available\": [\"c_arm\", \"arthroscopy\"],\n  \"available_date\": \"2024-12-01\",\n  \"available_time_slots\": [\n    {\n      \"start\": \"09:00\",\n      \"end\": \"12:00\",\n      \"status\": \"available\"\n    }\n  ],\n  \"facility_cost_per_hour\": 5000,\n  \"equipment_cost\": 2000,\n  \"total_package_cost\": 15000\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/hospital-availability",
+              "host": ["{{base_url}}"],
+              "path": ["hospital-availability"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Doctor Availability",
+      "item": [
+        {
+          "name": "Get All Doctor Availability",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/doctor-availability?page=1&limit=10",
+              "host": ["{{base_url}}"],
+              "path": ["doctor-availability"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Search Traveling Doctors",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/doctor-availability/search/traveling?target_city=Hyderabad&specialization=orthopedic",
+              "host": ["{{base_url}}"],
+              "path": ["doctor-availability", "search", "traveling"],
+              "query": [
+                {
+                  "key": "target_city",
+                  "value": "Hyderabad"
+                },
+                {
+                  "key": "specialization",
+                  "value": "orthopedic"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Doctor Availability",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"doctor_id\": \"123e4567-e89b-12d3-a456-426614174001\",\n  \"available_date\": \"2024-12-01\",\n  \"available_time_slots\": [\n    {\n      \"start\": \"09:00\",\n      \"end\": \"17:00\",\n      \"status\": \"available\"\n    }\n  ],\n  \"willing_to_travel\": true,\n  \"max_travel_distance_km\": 500,\n  \"preferred_cities\": [\"Hyderabad\", \"Chennai\", \"Bangalore\"],\n  \"consultation_fee\": 2000,\n  \"surgery_fee\": 150000,\n  \"travel_allowance\": 10000,\n  \"required_equipment\": [\"c_arm\", \"arthroscopy_equipment\"]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/doctor-availability",
+              "host": ["{{base_url}}"],
+              "path": ["doctor-availability"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Reviews System",
+      "item": [
+        {
+          "name": "Get All Reviews",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/reviews?status=approved&page=1&limit=10",
+              "host": ["{{base_url}}"],
+              "path": ["reviews"],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "approved"
+                },
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Reviews for Doctor",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/reviews/entity/doctor/123e4567-e89b-12d3-a456-426614174001",
+              "host": ["{{base_url}}"],
+              "path": ["reviews", "entity", "doctor", "123e4567-e89b-12d3-a456-426614174001"]
+            }
+          }
+        },
+        {
+          "name": "Create Review",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reviewable_type\": \"doctor\",\n  \"reviewable_id\": \"123e4567-e89b-12d3-a456-426614174001\",\n  \"reviewer_type\": \"patient\",\n  \"rating\": 5,\n  \"review_title\": \"Excellent Doctor\",\n  \"review_text\": \"Dr. Smith provided exceptional care during my knee replacement surgery. Highly recommended!\",\n  \"detailed_ratings\": {\n    \"bedside_manner\": 5,\n    \"expertise\": 5,\n    \"communication\": 4,\n    \"punctuality\": 5\n  },\n  \"procedure_type\": \"Knee Replacement\",\n  \"treatment_date\": \"2024-11-15\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/reviews",
+              "host": ["{{base_url}}"],
+              "path": ["reviews"]
+            }
+          }
+        },
+        {
+          "name": "Moderate Review (Admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"approved\",\n  \"moderation_notes\": \"Review approved after verification\",\n  \"is_featured\": true\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/reviews/{{review_id}}/moderate",
+              "host": ["{{base_url}}"],
+              "path": ["reviews", "{{review_id}}", "moderate"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Patient Testimonials",
+      "item": [
+        {
+          "name": "Get Featured Testimonials",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/testimonials/featured?region=india&limit=6",
+              "host": ["{{base_url}}"],
+              "path": ["testimonials", "featured"],
+              "query": [
+                {
+                  "key": "region",
+                  "value": "india"
+                },
+                {
+                  "key": "limit",
+                  "value": "6"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Doctor Testimonials",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/testimonials/doctor/123e4567-e89b-12d3-a456-426614174001",
+              "host": ["{{base_url}}"],
+              "path": ["testimonials", "doctor", "123e4567-e89b-12d3-a456-426614174001"]
+            }
+          }
+        },
+        {
+          "name": "Create Testimonial",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"doctor_id\": \"123e4567-e89b-12d3-a456-426614174001\",\n  \"hospital_id\": \"123e4567-e89b-12d3-a456-426614174002\",\n  \"rating\": 5,\n  \"testimonial_text\": \"Dr. Smith performed my knee replacement surgery with exceptional skill. The entire experience was smooth and professional. I'm back to my normal activities within 3 months!\",\n  \"treatment_type\": \"Knee Replacement Surgery\",\n  \"region\": \"india\",\n  \"consent_for_display\": true,\n  \"is_anonymous\": false\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/testimonials",
+              "host": ["{{base_url}}"],
+              "path": ["testimonials"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Service Tiles (Landing Page)",
+      "item": [
+        {
+          "name": "Get Active Service Tiles",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/service-tiles/active?region=india&limit=8",
+              "host": ["{{base_url}}"],
+              "path": ["service-tiles", "active"],
+              "query": [
+                {
+                  "key": "region",
+                  "value": "india"
+                },
+                {
+                  "key": "limit",
+                  "value": "8"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Search Service Tiles",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/service-tiles/search?q=orthopedic&region=india",
+              "host": ["{{base_url}}"],
+              "path": ["service-tiles", "search"],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "orthopedic"
+                },
+                {
+                  "key": "region",
+                  "value": "india"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Service Tile (Admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"service_name\": \"spine_surgery\",\n  \"display_name\": \"Spine Surgery\",\n  \"icon_url\": \"https://example.com/spine-icon.svg\",\n  \"description\": \"Advanced spine surgery procedures including disc replacement and spinal fusion\",\n  \"avg_cost_min\": 200000,\n  \"avg_cost_max\": 800000,\n  \"currency\": \"INR\",\n  \"display_order\": 5,\n  \"region\": \"india\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/service-tiles",
+              "host": ["{{base_url}}"],
+              "path": ["service-tiles"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Featured Content (Landing Page)",
+      "item": [
+        {
+          "name": "Get Landing Page Content",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/featured-content/landing?region=india",
+              "host": ["{{base_url}}"],
+              "path": ["featured-content", "landing"],
+              "query": [
+                {
+                  "key": "region",
+                  "value": "india"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Featured Content (Admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content_type\": \"doctor\",\n  \"entity_id\": \"123e4567-e89b-12d3-a456-426614174001\",\n  \"display_order\": 1,\n  \"region\": \"india\",\n  \"start_date\": \"2024-12-01T00:00:00Z\",\n  \"end_date\": \"2025-01-31T23:59:59Z\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/featured-content",
+              "host": ["{{base_url}}"],
+              "path": ["featured-content"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Feature Configurations",
+      "item": [
+        {
+          "name": "Get Active Configuration",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/feature-configurations/active?deployment_id=default_healthtime",
+              "host": ["{{base_url}}"],
+              "path": ["feature-configurations", "active"],
+              "query": [
+                {
+                  "key": "deployment_id",
+                  "value": "default_healthtime"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update Module Configuration (Admin)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"modules\": {\n    \"marketplace\": {\n      \"enabled\": true,\n      \"required\": false\n    },\n    \"reviews\": {\n      \"enabled\": true,\n      \"required\": false\n    },\n    \"testimonials\": {\n      \"enabled\": true,\n      \"required\": false\n    }\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/feature-configurations/{{config_id}}/modules",
+              "host": ["{{base_url}}"],
+              "path": ["feature-configurations", "{{config_id}}", "modules"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "OTP Management",
+      "item": [
+        {
+          "name": "Generate OTP",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"+919876543210\",\n  \"otp_type\": \"login\",\n  \"delivery_method\": \"sms\",\n  \"expires_in_minutes\": 10\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/otp-logs/generate",
+              "host": ["{{base_url}}"],
+              "path": ["otp-logs", "generate"]
+            }
+          }
+        },
+        {
+          "name": "Verify OTP",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"otp_code\": \"123456\",\n  \"phone\": \"+919876543210\",\n  \"otp_type\": \"login\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/otp-logs/verify",
+              "host": ["{{base_url}}"],
+              "path": ["otp-logs", "verify"]
+            }
+          }
+        },
+        {
+          "name": "Get OTP Statistics (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/otp-logs/stats?days=7",
+              "host": ["{{base_url}}"],
+              "path": ["otp-logs", "stats"],
+              "query": [
+                {
+                  "key": "days",
+                  "value": "7"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Commission System",
+      "item": [
+        {
+          "name": "Get Commission Agreements (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/commission-agreements?status=active",
+              "host": ["{{base_url}}"],
+              "path": ["commission-agreements"],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "active"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Commission Agreement (Admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"entity_type\": \"doctor\",\n  \"entity_id\": \"123e4567-e89b-12d3-a456-426614174001\",\n  \"commission_type\": \"percentage\",\n  \"commission_rate\": 15.0,\n  \"minimum_monthly_volume\": 100000,\n  \"payment_terms\": \"net_30\",\n  \"currency\": \"INR\",\n  \"applicable_services\": [\"consultation\", \"surgery\"],\n  \"effective_date\": \"2024-12-01\",\n  \"expiry_date\": \"2025-11-30\",\n  \"auto_renewal\": true\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/commission-agreements",
+              "host": ["{{base_url}}"],
+              "path": ["commission-agreements"]
+            }
+          }
+        },
+        {
+          "name": "Get Commission Transactions (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/commission-transactions?payment_status=pending",
+              "host": ["{{base_url}}"],
+              "path": ["commission-transactions"],
+              "query": [
+                {
+                  "key": "payment_status",
+                  "value": "pending"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Landing Page Analytics",
+      "item": [
+        {
+          "name": "Track User Interaction",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"session_id\": \"session_123456\",\n  \"user_location\": {\n    \"city\": \"Hyderabad\",\n    \"state\": \"Telangana\",\n    \"country\": \"India\"\n  },\n  \"clicked_tile\": \"orthopedic\",\n  \"page_section\": \"service_tiles\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/landing-page-analytics/track",
+              "host": ["{{base_url}}"],
+              "path": ["landing-page-analytics", "track"]
+            }
+          }
+        },
+        {
+          "name": "Get Analytics Dashboard (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/landing-page-analytics/dashboard?days=7",
+              "host": ["{{base_url}}"],
+              "path": ["landing-page-analytics", "dashboard"],
+              "query": [
+                {
+                  "key": "days",
+                  "value": "7"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Heatmap Data (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/landing-page-analytics/heatmap?days=7",
+              "host": ["{{base_url}}"],
+              "path": ["landing-page-analytics", "heatmap"],
+              "query": [
+                {
+                  "key": "days",
+                  "value": "7"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Existing Core APIs",
+      "item": [
+        {
+          "name": "Get Patients",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/patients",
+              "host": ["{{base_url}}"],
+              "path": ["patients"]
+            }
+          }
+        },
+        {
+          "name": "Get Doctors",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/doctors",
+              "host": ["{{base_url}}"],
+              "path": ["doctors"]
+            }
+          }
+        },
+        {
+          "name": "Get Hospitals",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/hospitals",
+              "host": ["{{base_url}}"],
+              "path": ["hospitals"]
+            }
+          }
+        },
+        {
+          "name": "Get Nearby Hospitals",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/hospitals/nearby?lat=12.9716&lng=77.5946&radius=25",
+              "host": ["{{base_url}}"],
+              "path": ["hospitals", "nearby"],
+              "query": [
+                {
+                  "key": "lat",
+                  "value": "12.9716"
+                },
+                {
+                  "key": "lng",
+                  "value": "77.5946"
+                },
+                {
+                  "key": "radius",
+                  "value": "25"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Surgeries",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/surgeries",
+              "host": ["{{base_url}}"],
+              "path": ["surgeries"]
+            }
+          }
+        },
+        {
+          "name": "Get My Implants",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/implants/my/implants",
+              "host": ["{{base_url}}"],
+              "path": ["implants", "my", "implants"]
+            }
+          }
+        },
+        {
+          "name": "Get Bookings",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/bookings",
+              "host": ["{{base_url}}"],
+              "path": ["bookings"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

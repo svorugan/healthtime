@@ -613,4 +613,82 @@ router.patch('/doctors/:doctor_id/reject', authenticate, authorize('admin'), asy
   }
 });
 
+// Deactivate user (Admin only) - GDPR Tier 1
+router.patch('/users/:user_id/deactivate', authenticate, authorize('admin'), async (req, res) => {
+  const { user_id } = req.params;
+  const { reason } = req.body;
+
+  try {
+    // Prevent admin from deactivating themselves
+    if (user_id === req.user.id) {
+      return res.status(400).json({ 
+        detail: 'Cannot deactivate your own account' 
+      });
+    }
+
+    const user = await User.findByPk(user_id);
+    if (!user) {
+      return res.status(404).json({ detail: 'User not found' });
+    }
+
+    // Deactivate user
+    user.is_active = false;
+    user.updated_at = new Date();
+    await user.save();
+
+    // Log the action for audit
+    console.log(`User ${user.email} deactivated by admin ${req.user.email}. Reason: ${reason || 'Not specified'}`);
+
+    return res.json({ 
+      message: 'User deactivated successfully',
+      user: {
+        id: user.id,
+        email: user.email,
+        is_active: user.is_active,
+        updated_at: user.updated_at
+      }
+    });
+  } catch (error) {
+    console.error('Deactivate user error:', error);
+    return res.status(500).json({ 
+      detail: 'Failed to deactivate user: ' + error.message 
+    });
+  }
+});
+
+// Reactivate user (Admin only)
+router.patch('/users/:user_id/reactivate', authenticate, authorize('admin'), async (req, res) => {
+  const { user_id } = req.params;
+
+  try {
+    const user = await User.findByPk(user_id);
+    if (!user) {
+      return res.status(404).json({ detail: 'User not found' });
+    }
+
+    // Reactivate user
+    user.is_active = true;
+    user.updated_at = new Date();
+    await user.save();
+
+    // Log the action for audit
+    console.log(`User ${user.email} reactivated by admin ${req.user.email}`);
+
+    return res.json({ 
+      message: 'User reactivated successfully',
+      user: {
+        id: user.id,
+        email: user.email,
+        is_active: user.is_active,
+        updated_at: user.updated_at
+      }
+    });
+  } catch (error) {
+    console.error('Reactivate user error:', error);
+    return res.status(500).json({ 
+      detail: 'Failed to reactivate user: ' + error.message 
+    });
+  }
+});
+
 module.exports = router;
